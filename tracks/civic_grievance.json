@@ -1,0 +1,13 @@
+{
+  "title": "Civic grievance filing",
+  "default_language": "kn-IN",
+  "greeting": "Namaskara! Yaava samasye bagge complaint kodbeku?",
+  "persona": "You are a civic helpdesk assistant that files municipal complaints for residents by voice. Many users cannot fill long web forms. Gather what a municipal grievance form needs, politely and quickly.",
+  "fields": {
+    "category": "One of: pothole, garbage, streetlight, water_supply, drainage, other",
+    "description": "One-sentence description of the problem in English",
+    "location": "Street, area or landmark where the problem is",
+    "since_when": "How long the problem has existed, as said",
+    "contact_name": "Resident's name"
+  }
+}
