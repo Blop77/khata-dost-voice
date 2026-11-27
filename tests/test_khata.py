@@ -264,3 +264,36 @@ def test_stt_sends_bare_content_type(monkeypatch):
     monkeypatch.setattr(speech.httpx, "AsyncClient", FakeClient)
     asyncio.run(speech.transcribe(b"x" * 2000, "speech.webm", "audio/webm;codecs=opus"))
     assert sent["type"] == "audio/webm"
+
+
+# --- period totals ---------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,period,focus", [
+    ("How much money did I receive this month?", "month", "jama"),
+    ("is mahine kitna jama hua", "month", "jama"),
+    ("आज कितना पैसा मिला?", "today", "jama"),
+    ("इस हफ्ते कितना उधार दिया", "week", "udhaar"),
+    ("How much credit did I give today?", "today", "udhaar"),
+    ("या महिन्यात किती पैसे मिळाले", "month", "jama"),
+])
+def test_summary_questions(text, period, focus):
+    r = parser.understand(text)
+    assert (r["intent"], r.get("period"), r["entry_type"]) == ("summary_query", period, focus)
+
+
+def test_summary_answer_uses_ledger_numbers():
+    say("Sunita ne 300 jama kiya", "haan", sid="s")
+    r = say("is mahine kitna jama hua", sid="s")
+    tot = ledger.totals("month")
+    assert r["view"] == "summary" and str(tot["jama"]) in r["reply"].replace(",", "")
+
+
+def test_dues_questions_are_not_summaries():
+    assert parser.understand("kitna baaki hai")["intent"] == "dues_query"
+    assert parser.understand("Total kitna udhaar hai")["intent"] == "dues_query"
+    assert parser.understand("Ramesh ka kitna baaki hai")["intent"] == "customer_query"
+
+
+@pytest.mark.parametrize("text", ["is mahine kitna jama hua", "aaj kitna paisa mila", "maine kitna udhaar diya"])
+def test_roman_hinglish_is_hindi(text):
+    assert parser.script_language(text) == "hi-IN"

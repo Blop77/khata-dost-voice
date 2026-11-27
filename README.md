@@ -45,6 +45,7 @@ Without Docker: `pip install -r requirements.txt && uvicorn app.main:app --port 
 | Mohan ko 2 packet chicks, 40 rupaye udhaar | Asks to confirm a new customer and corrects "chicks → chips" on screen |
 | किस किस का पैसा बाकी है? | Speaks the top five who owe the most, and the total |
 | aaj kisko yaad dilana hai | Lists who is due today, each with a polite message in that customer's language |
+| इस महीने कितना जमा हुआ? / How much did I receive this month? | Speaks the totals received and given on credit today, this week, this month or so far (numbers from the ledger) |
 | पिछली entry हटाओ → हाँ | Asks first, then removes the last entry (kept for audit) |
 | रमेशला अडीचशे उधार | Marathi: "Ramesh, उधार 250 रुपये. लिहू का?" |
 
@@ -78,7 +79,7 @@ A ledger is money, so the design is built around not getting amounts wrong:
 |---|---|
 | Voice entry, read-back, spoken yes, corrections, undo, balances, dues, reminders (Hindi, Hinglish, Marathi, English) | Sending through the WhatsApp Business API. The prototype opens a WhatsApp share link and offers the voice note as an MP3 |
 | Customer receipts in the customer's language, consent log, 8 am–7 pm rule | Reply templates for languages beyond Hindi, Marathi and English |
-| Keyless mode, one-command Docker start, 62 automated tests, CI | Login, multiple shops or staff, offline queue, backups |
+| Keyless mode, one-command Docker start, 74 automated tests, CI | Login, multiple shops or staff, offline queue, backups |
 
 Demo customers are synthetic. The ledger is a single-shop SQLite file (`/data/khata.db` in Docker).
 

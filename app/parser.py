@@ -192,6 +192,37 @@ YES_WORDS = {"haan", "han", "ha", "haa", "haanji", "हाँ", "हां", "�
              "save", "karo", "करो", "kar", "कर", "bilkul", "बिल्कुल", "haanji", "lihi", "लिहा", "हो", "chalega", "चलेगा"}
 
 
+# --- period totals ("how much did I receive this month?") ------------------------------------
+
+PERIODS = {
+    "today": ["aaj", "आज", "today"],
+    "week": ["is hafte", "इस हफ्ते", "इस हफ़्ते", "this week", "hafte mein", "हफ्ते में", "या आठवड्यात", "week"],
+    "month": ["is mahine", "इस महीने", "this month", "mahine mein", "महीने में", "या महिन्यात", "month"],
+    "all": ["ab tak", "अब तक", "so far", "total", "kul", "कुल", "आत्तापर्यंत"],
+}
+ASK_WORDS = ["kitna", "kitne", "कितना", "कितने", "कितनी", "how much", "how many", "total", "kul", "कुल", "किती", "kiti"]
+RECEIVED = ["mila", "mile", "मिला", "मिले", "receive", "received", "collect", "collected", "aaya", "aaye", "आया", "आए",
+            "jama hua", "jama hue", "जमा हुआ", "जमा हुए", "वसूल", "vasool", "मिळाले", "got", "payment"]
+GIVEN = ["udhaar diya", "udhaar gaya", "उधार दिया", "उधार गया", "credit given", "gave credit", "given on credit",
+         "udhaar", "उधार", "credit"]
+
+
+def parse_summary(text: str) -> dict | None:
+    """Questions about totals for a period: "is mahine kitna jama hua", "How much money did I receive this month?"."""
+    low = " " + re.sub(r"[,.!?।]+", " ", text.lower()) + " "
+    if not any(w in low for w in ASK_WORDS):
+        return None
+    period = next((p for p in ("today", "week", "month", "all") if any(w in low for w in PERIODS[p])), None)
+    focus = "jama" if _has(text, RECEIVED) else ("udhaar" if _has(text, GIVEN) else None)
+    if not period and not focus:
+        return None
+    if "baaki" in low or "बाकी" in low or "owe" in low:
+        return None  # "kitna baaki hai" is about dues, not a period total
+    if period in (None, "all") and focus == "udhaar" and re.search(r" (hai|है|आहे) ", low):
+        return {"dues": True}  # "total kitna udhaar hai" = how much is owed right now
+    return {"period": period or "month", "focus": focus}
+
+
 def is_yes(text: str) -> bool:
     """Strict: EVERY word must be a yes-word. "haan, 400" or "haan Sunita ka" is a correction, never a save.
     A lone Marathi "हो" counts; Hinglish "ho gaya" does not."""
@@ -223,7 +254,11 @@ NAME_AFTER = {"ko", "को", "ne", "ने", "ka", "का", "ki", "की", "k
 EN_STOP = {"give", "gave", "add", "write", "put", "please", "how", "much", "does", "do", "did", "who", "what", "whose", "is",
            "are", "the", "a", "an", "to", "for", "of", "me", "my", "i", "should", "today", "delete", "remove", "last",
            "entry", "owe", "owes", "money", "rupees", "rupee", "credit", "paid", "pay", "by", "due", "remind", "show",
-           "tell", "account", "balance", "yes", "no", "okay", "new", "customer", "and", "with", "on", "has", "have", "from"}
+           "tell", "account", "balance", "yes", "no", "okay", "new", "customer", "and", "with", "on", "has", "have", "from",
+           "total", "this", "week", "month", "much", "did", "receive", "received", "got", "money",
+           # Hindi/Marathi period and question words are never names either
+           "is", "इस", "kul", "कुल", "kitna", "kitne", "कितना", "कितने", "कितनी", "hafte", "हफ्ते", "हफ़्ते", "mahine",
+           "महीने", "aaj", "आज", "ab", "अब", "या", "किती", "kiti", "आठवड्यात", "महिन्यात"}
 
 HONORIFIC = {"bhai", "भाई", "bhaiya", "भैया", "ji", "जी", "didi", "दीदी", "seth", "सेठ", "sahab", "साहब", "saab", "aunty",
              "आंटी", "uncle", "अंकल", "chacha", "चाचा", "kaka", "काका", "tai", "ताई", "mausi", "मौसी", "bhabhi", "भाभी",
@@ -383,6 +418,13 @@ def understand(text: str, has_draft: bool = False, today: date | None = None) ->
     etype = entry_type(text)
     items, fixes = parse_items(text)
     due = parse_due(text, today)
+    summary = parse_summary(text) if amount is None and not name else None
+    if summary and summary.get("dues"):
+        return {"intent": "dues_query", "customer_name": None, "entry_type": None, "amount_rupees": None,
+                "items": None, "item_fixes": [], "due_date": None}
+    if summary and not (has_draft and is_yes(text)):
+        return {"intent": "summary_query", "customer_name": None, "entry_type": summary["focus"], "amount_rupees": None,
+                "items": None, "item_fixes": [], "due_date": None, "period": summary["period"]}
     if count_entries(text) > 1:
         return {"intent": "multiple", "customer_name": name, "entry_type": etype, "amount_rupees": amount,
                 "items": items, "item_fixes": fixes, "due_date": due}
@@ -417,7 +459,9 @@ def script_language(text: str) -> str:
     """Guess the reply language from typed text: Marathi, Hindi (Devanagari or Roman Hinglish) or English."""
     if re.search(r"[ऀ-ॿ]", text):
         end = r"(?=[\s,।.?!]|$)"  # Devanagari matras break \b, so mark word ends by hand
-        marathi = (rf"(आहे|नको|दिले|झाले|पर्यंत|उद्या|अडीच|लिहू|बरोबर|नाही{end}|[ऀ-ॿ]+शे{end}|"
+        if "ळ" in text:  # ळ is everyday Marathi (मिळाले, मंगळवार) and almost never Hindi
+            return "mr-IN"
+        marathi = (rf"(आहे|नको|दिले|झाले|पर्यंत|उद्या|अडीच|लिहू|बरोबर|किती|महिन्यात|आठवड्यात|नाही{end}|[ऀ-ॿ]+शे{end}|"
                    rf"[ऀ-ॿ]{{2,}}ला{end})")
         # "-ला" alone is also Hindi ("मिला", "दिला"), so it only counts next to money talk
         m = re.search(marathi, text)
@@ -426,7 +470,17 @@ def script_language(text: str) -> str:
         return "hi-IN"
     low = " " + re.sub(r"\s+", " ", re.sub(r"[,.!?।;:\"'()\-]+", " ", text.lower())) + " "
     hinglish = ["ko", "ne", "ka", "ki", "hai", "udhaar", "udhar", "jama", "sau", "hazaar", "haan", "nahi", "tak",
-                "dega", "kis", "baaki", "hisaab", "rameshla", "lihu", "likho", "likh", "theek", "rupaye", "diye"]
-    if any(f" {w} " in low for w in hinglish) or re.search(r"[a-z]+la\b", low):
-        return "hi-IN" if not re.search(r"\b\w+la\b|\bshe\b|lihu", low) else "mr-IN"
+                "dega", "kis", "baaki", "hisaab", "rameshla", "lihu", "likho", "likh", "theek", "rupaye", "diye",
+                "kitna", "kitne", "kitni", "mahine", "hafte", "hua", "hue", "mila", "mile", "diya", "aaj", "paisa",
+                "paise", "batao", "kya", "mujhe", "maine", "kal", "abhi", "wala", "gaya", "kiya", "karo", "aur", "bhi"]
+    # Roman Marathi: "Rameshla", "lihu ka", "adeechshe". Hindi words that also end in "-la" don't count.
+    hindi_la = {"mila", "wala", "wali", "chala", "kala", "pehla", "pahla", "gala", "bola", "khula", "mela", "sala",
+                "tala", "pala", "hila", "dila", "kila", "jala", "bhala", "akela", "thela", "kela", "dala", "nikla"}
+    roman_marathi = (re.search(r"\bshe\b|lihu|\baahe\b|\bnako\b|\bkiti\b|milale|adeech", low)
+                     or any(w.endswith("la") and len(w) > 3 and w not in hindi_la and not w.endswith(("wala", "vala"))
+                            for w in low.split()))
+    if roman_marathi:
+        return "mr-IN"
+    if any(f" {w} " in low for w in hinglish):
+        return "hi-IN"
     return "en-IN"

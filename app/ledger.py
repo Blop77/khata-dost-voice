@@ -204,6 +204,35 @@ def recent_entries(limit: int = 20) -> list[dict]:
             "WHERE e.deleted_at IS NULL ORDER BY e.id DESC LIMIT ?", (limit,))]
 
 
+def period_start(period: str, today: date | None = None) -> date | None:
+    """today | week (since Monday) | month (since the 1st) | all (None)."""
+    today = today or date.today()
+    if period == "today":
+        return today
+    if period == "week":
+        return today - timedelta(days=today.weekday())
+    if period == "month":
+        return today.replace(day=1)
+    return None
+
+
+def totals(period: str = "month", today: date | None = None) -> dict:
+    """Money received (jama) and credit given (udhaar) since the start of the period, from saved entries only."""
+    start = period_start(period, today)
+    where, args = "deleted_at IS NULL", []
+    if start:
+        where += " AND created_at >= ?"
+        args.append(start.isoformat())
+    with db() as conn:
+        rows = conn.execute(f"SELECT type, COUNT(*) AS n, COALESCE(SUM(amount), 0) AS total FROM entries "
+                            f"WHERE {where} GROUP BY type", args).fetchall()
+    out = {"period": period, "since": start.isoformat() if start else None,
+           "jama": 0, "jama_count": 0, "udhaar": 0, "udhaar_count": 0}
+    for r in rows:
+        out[r["type"]], out[f"{r['type']}_count"] = int(r["total"]), int(r["n"])
+    return out
+
+
 def due_customers(on: date | None = None) -> list[dict]:
     """Customers who still owe money and whose promised date is today or past."""
     day = (on or date.today()).isoformat()

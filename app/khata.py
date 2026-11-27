@@ -41,6 +41,9 @@ MONTHS = {"hi-IN": "जनवरी फ़रवरी मार्च अप्
           "en-IN": "January February March April May June July August September October November December".split()}
 TYPE = {"hi-IN": {"udhaar": "उधार", "jama": "जमा"}, "mr-IN": {"udhaar": "उधार", "jama": "जमा"},
         "en-IN": {"udhaar": "credit", "jama": "paid"}}
+PERIOD_WORDS = {"hi-IN": {"today": "आज", "week": "इस हफ्ते", "month": "इस महीने", "all": "अब तक"},
+                "mr-IN": {"today": "आज", "week": "या आठवड्यात", "month": "या महिन्यात", "all": "आत्तापर्यंत"},
+                "en-IN": {"today": "Today", "week": "This week", "month": "This month", "all": "So far"}}
 TYPE_BEFORE = {"hi-IN": TYPE["hi-IN"], "mr-IN": TYPE["mr-IN"], "en-IN": {"udhaar": "credit of", "jama": "paid"}}
 
 T = {
@@ -86,6 +89,17 @@ T = {
     "one_at_a_time": {"hi-IN": "एक-एक करके बोलिए। पहले {name} का बताइए।", "mr-IN": "एकेक करून सांगा. आधी {name} यांचे सांगा.",
                       "en-IN": "One at a time, please. Tell me {name}'s entry first."},
     "which_new": {"hi-IN": "{old} या नया ग्राहक {new}?", "mr-IN": "{old} की नवीन ग्राहक {new}?", "en-IN": "{old}, or a new customer {new}?"},
+    "summary_jama": {"hi-IN": "{period} आपको कुल {jama} मिले, {jn} एंट्री में।{other}",
+                     "mr-IN": "{period} तुम्हाला एकूण {jama} मिळाले, {jn} नोंदींमध्ये.{other}",
+                     "en-IN": "{period} you received {jama} in {jn_txt}.{other}"},
+    "summary_jama_other": {"hi-IN": " उधार दिया {udhaar}।", "mr-IN": " उधार दिले {udhaar}.", "en-IN": " You gave {udhaar} on credit."},
+    "summary_udhaar": {"hi-IN": "{period} कुल {udhaar} उधार दिया, {un} एंट्री में।{other}",
+                       "mr-IN": "{period} एकूण {udhaar} उधार दिले, {un} नोंदींमध्ये.{other}",
+                       "en-IN": "{period} you gave {udhaar} on credit in {un_txt}.{other}"},
+    "summary_udhaar_other": {"hi-IN": " जमा मिले {jama}।", "mr-IN": " जमा मिळाले {jama}.", "en-IN": " You received {jama}."},
+    "summary_both": {"hi-IN": "{period} जमा मिले {jama}, और उधार दिया {udhaar}।", "mr-IN": "{period} जमा {jama}, आणि उधार {udhaar}.",
+                     "en-IN": "{period} you received {jama} and gave {udhaar} on credit."},
+    "summary_none": {"hi-IN": "{period} कोई एंट्री नहीं है।", "mr-IN": "{period} एकही नोंद नाही.", "en-IN": "{period} there are no entries."},
     "unclear": {"hi-IN": "समझ नहीं आया। ऐसे बोलिए: रमेश को ढाई सौ का उधार।",
                 "mr-IN": "समजले नाही. असे सांगा: रमेशला अडीचशे उधार.",
                 "en-IN": "Sorry, I didn't get that. Try: Ramesh, 250 credit."},
@@ -156,7 +170,9 @@ SCHEMA = {
     "type": "object",
     "properties": {
         "intent": {"type": "string", "enum": ["entry", "confirm", "cancel", "correct", "dues_query",
-                                              "customer_query", "undo", "reminders", "unclear"]},
+                                              "customer_query", "summary_query", "undo", "reminders", "unclear"]},
+        "period": {"type": ["string", "null"], "enum": ["today", "week", "month", "all", None],
+                   "description": "For summary_query: the time window asked about"},
         "customer_name": {"type": ["string", "null"], "description": "Customer name exactly as spoken, e.g. Ramesh or रमेश"},
         "entry_type": {"type": ["string", "null"], "enum": ["udhaar", "jama", None],
                        "description": "udhaar = goods/money given on credit; jama = customer paid back"},
@@ -165,7 +181,7 @@ SCHEMA = {
         "due_date": {"type": ["string", "null"], "description": "YYYY-MM-DD promised payment date, or null"},
         "language": {"type": "string", "description": "BCP-47 code of the language the owner spoke, e.g. hi-IN, mr-IN, ta-IN, en-IN"},
     },
-    "required": ["intent", "customer_name", "entry_type", "amount_rupees", "items", "due_date", "language"],
+    "required": ["intent", "period", "customer_name", "entry_type", "amount_rupees", "items", "due_date", "language"],
     "additionalProperties": False,
 }
 
@@ -182,6 +198,9 @@ Intents:
 - confirm: yes to the pending entry (haan, ha, ok, likh do, theek hai, barobar).
 - cancel: no, without new details. correct: no/changes WITH a new detail ("nahi, teen sau", "jama tha").
 - dues_query: who owes money ("kis kis ka paisa baaki hai"). customer_query: one person's balance ("Ramesh ka hisaab").
+- summary_query: totals for a period, e.g. "How much money did I receive this month?", "aaj kitna jama hua",
+  "is hafte kitna udhaar diya". Set period (today/week/month/all) and entry_type to what they ask about
+  (jama = money received, udhaar = credit given, null = both).
 - undo: remove the last saved entry ("pichli entry hatao"). reminders: who to remind today ("aaj kisko yaad dilana hai").
 - unclear: anything else, or speech that makes no sense.
 
@@ -225,6 +244,9 @@ def merge(rules: dict, ai: dict | None) -> dict:
     for k in ("customer_name", "entry_type", "items", "due_date"):
         out[k] = ai.get(k) or rules.get(k)
     out["customer_name"] = clean_name(out["customer_name"])
+    out["period"] = ai.get("period") or rules.get("period")
+    if rules["intent"] == "summary_query" and ai["intent"] in ("unclear", "dues_query", "entry"):
+        out["intent"] = "summary_query"  # the rules recognised a clear period-total question
     if ai["intent"] == "cancel" and rules["intent"] == "correct":
         out["intent"] = "correct"  # "nahi nahi, Ganesh" changes the name; it doesn't cancel
     a, r = ai.get("amount_rupees"), rules.get("amount_rupees")
@@ -357,9 +379,9 @@ async def handle(sid: str, text: str, language_code: str | None = None) -> dict:
     # Short replies ("haan", "nahi, 400", "doodhwala") say little about language: keep the conversation's.
     if len(parser.tokens(text)) >= 3:
         guess = parser.script_language(text)
-        # plain English with no Hindi words is unambiguous; otherwise trust speech recognition, then the model
-        sess["lang"] = lang_of("en-IN" if guess == "en-IN" and not language_code else
-                               language_code or u.get("language") or guess)
+        # Speech recognition knows the spoken language best; for typed text the word-based guess beats the model,
+        # which tends to call Roman-script Hinglish ("is mahine kitna jama hua") English.
+        sess["lang"] = lang_of(language_code or guess)
     lang, awaiting = sess["lang"], sess.get("awaiting")
     meta = {"source": u["source"], "item_fixes": u.get("item_fixes") or [], "heard": text}
 
@@ -386,7 +408,7 @@ async def handle(sid: str, text: str, language_code: str | None = None) -> dict:
             sess["draft"].update(customer_id=opt["id"], name=opt["name"])
             sess["options"] = []
             return {**_next_question(sess), **meta}
-        if u["intent"] not in ("dues_query", "customer_query", "undo", "reminders", "cancel") and not u.get("amount_rupees"):
+        if u["intent"] not in ("dues_query", "customer_query", "summary_query", "undo", "reminders", "cancel") and not u.get("amount_rupees"):
             names = ", ".join(o["name"] for o in sess["options"])
             return {**_reply(sess, say("which", lang, options=names)), **meta}
     if awaiting == "confirm_new_customer":
@@ -442,7 +464,7 @@ async def handle(sid: str, text: str, language_code: str | None = None) -> dict:
             sess["awaiting"] = "amount_check"
             return {**_reply(sess, say("amount_check", lang, a=rupees(a, lang), b=rupees(b, lang))), **meta}
         return {**_next_question(sess), **meta}
-    if intent in ("dues_query", "customer_query", "undo", "reminders") and awaiting == "confirm":
+    if intent in ("dues_query", "customer_query", "summary_query", "undo", "reminders") and awaiting == "confirm":
         sess["awaiting"] = None  # the read-back is stale now; it must be heard again before saving
     if intent == "dues_query":
         owing = [c for c in ledger.customers_with_balance() if c["balance"] > 0]
@@ -452,6 +474,25 @@ async def handle(sid: str, text: str, language_code: str | None = None) -> dict:
         total = sum(c["balance"] for c in owing)
         return {**_reply(sess, say("dues", lang, count=len(owing), total=rupees(total, lang), top=top)), **meta,
                 "view": "dues", "dues": owing}
+    if intent == "summary_query":
+        tot = ledger.totals(u.get("period") or "month")
+        period = PERIOD_WORDS[lang][tot["period"]]
+        money = {"jama": rupees(tot["jama"], lang), "udhaar": rupees(tot["udhaar"], lang),
+                 "jn": tot["jama_count"], "un": tot["udhaar_count"],
+                 "jn_txt": f"{tot['jama_count']} entr{'y' if tot['jama_count'] == 1 else 'ies'}",
+                 "un_txt": f"{tot['udhaar_count']} entr{'y' if tot['udhaar_count'] == 1 else 'ies'}"}
+        focus = u.get("entry_type")
+        if not tot["jama_count"] and not tot["udhaar_count"]:
+            text = say("summary_none", lang, period=period)
+        elif focus == "jama":
+            other = T["summary_jama_other"][lang].format(**money) if tot["udhaar_count"] else ""
+            text = say("summary_jama", lang, period=period, other=other, **money)
+        elif focus == "udhaar":
+            other = T["summary_udhaar_other"][lang].format(**money) if tot["jama_count"] else ""
+            text = say("summary_udhaar", lang, period=period, other=other, **money)
+        else:
+            text = say("summary_both", lang, period=period, **money)
+        return {**_reply(sess, text), **meta, "view": "summary", "summary": tot}
     if intent == "customer_query":
         matches = ledger.find_customers(u.get("customer_name") or "")
         if not matches:
