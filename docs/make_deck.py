@@ -65,7 +65,7 @@ def slide(kick, head, *flow):
 slide("KHATA DOST  ·  Bolo, khata likho",
       "A voice ledger for kirana udhaar",
       Paragraph("The shop owner says the entry out loud while serving. Khata Dost reads it back, saves it only after "
-                "the owner says <b>haan</b>, keeps every balance, and sends the customer a receipt in their own language.", body),
+                "the owner says <b>haan</b>, keeps every balance, and prepares a receipt in the customer's own language.", body),
       Spacer(1, 10),
       Paragraph("<b>Theme:</b> Livelihoods and small business. Extends my Round 1 idea.", body),
       Paragraph(f"<b>Code:</b> {LINKS['github']}<br/><b>Demo video:</b> {LINKS['video']}<br/><b>Live link:</b> {LINKS['live']}", body),
@@ -87,21 +87,22 @@ slide("1 · THE SOLUTION", "The whole loop is spoken, start to finish",
           ["\"Ramesh ko dhai sau ka udhaar, aata 5 kilo, Monday tak dega\"",
            "\"Ramesh, udhaar 250 rupaye, aata 5 kilo, Somvar 30 November tak. Likh doon?\" and shows a red UDHAAR card"],
           ["\"Haan\" (heard automatically, no second tap)",
-           "Saves. \"Likh diya. Ramesh ka kul baaki 750.\" Customer gets a receipt in their language"],
+           "Saves. \"Likh diya. Ramesh ka kul baaki 750.\" A receipt in the customer's language is ready to send in one tap"],
           ["\"Nahi, teen sau\"", "Changes only the amount and reads it back again"],
           ["\"Kis kis ka paisa baaki hai?\"", "Speaks the top five who owe most, total, full list on screen"],
           ["\"Aaj kisko yaad dilana hai?\"", "Lists who is due today with a polite WhatsApp message in each customer's language"],
           ["\"Pichli entry hatao\"", "Asks first, then removes the last entry (kept in an audit trail)"],
       ], [330, 520]),
       Spacer(1, 8),
-      Paragraph("Works in Hindi, Hinglish, Marathi and English today. One tap per entry; about 2 to 3 seconds from "
-                "the end of speech to the spoken reply in my tests.", body))
+      Paragraph("Works in Hindi, Hinglish, basic Marathi and English today. One tap per entry; about 2 to 3 seconds from "
+                "the end of speech to the spoken reply in my tests with Sarvam and OpenAI keys.", body))
 
 slide("1 · WHY YOU CAN TRUST IT", "A ledger is money: the design is built around not getting amounts wrong",
       *bullets([
           "<b>Nothing is saved until the owner hears it and says yes.</b> A stray \"haan\" after another question never saves an old draft.",
           "<b>The AI never speaks a number.</b> It only extracts the entry; balances and spoken amounts come from the database.",
-          "<b>Two independent readers.</b> A rule parser (dhai sau = 250, dedh hazaar = 1500, Marathi adeechshe = 250) checks the AI. "
+          "<b>Two independent readers.</b> A rule parser (dhai sau = 250, dedh hazaar = 1500, Marathi adeechshe = 250) checks the AI "
+          "(with no AI key, the rules work alone). "
           "If they disagree, the app asks: \"7 ya 60? Phir se boliye.\"",
           "<b>Big amounts are read digit by digit</b> (\"7200, yaani 7 2 0 0\"), because a misheard zero costs real money.",
           "<b>Names across scripts and spellings</b> (Ramesh in Devanagari = Ramesh = Rmesh); two Rameshes? It asks \"Kaun se? Ramesh, Ramesh doodhwala\".",
@@ -160,7 +161,7 @@ slide("3 · RISKS, STATED HONESTLY", "What could go wrong, and what is already d
           "Mitigation: read-back, two readers, digit-by-digit for big amounts, undo, and a learned noise floor in the recorder.",
           "<b>Adoption.</b> Paper is free and familiar. Khata Dost must feel faster than paper on day one, so the first screen is just one button.",
           "<b>WhatsApp policy.</b> Reminders could be rejected as collection. They are framed as an account statement, sent only with consent, "
-          "only 8 am to 7 pm, with an opt-out.",
+          "only 8 am to 7 pm, and every message says how to stop them.",
           "<b>Privacy (DPDP Act).</b> Core duties start around May 2027 and the shop owner is responsible for customer data. The app already "
           "records each customer's consent with a timestamp and stores only name, phone, amounts, items and dates.",
           "<b>Market shift.</b> Quick commerce is closing some metro kiranas; the first segment is smaller towns.",
@@ -189,7 +190,7 @@ slide("WHAT IS REAL TODAY", "Built, tested, and honest about the rest",
            "WhatsApp Business API sending (prototype uses a WhatsApp share link and a downloadable voice note)"],
           ["Customer receipts and reminders in the customer's language, consent with timestamp, 8 am to 7 pm rule",
            "Other Indian languages beyond Hindi, Marathi and English replies"],
-          ["Keyless mode, Docker one-command start, 33 automated tests, CI that starts the container with no keys",
+          ["Keyless mode, Docker one-command start, 53 automated tests, CI that starts the container with no keys",
            "Multi-shop accounts, login, offline queue, backups"],
       ], [425, 425]),
       Spacer(1, 6),

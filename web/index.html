@@ -3,19 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#14532d">
+  <meta name="theme-color" content="#0f3d2e">
   <title>Khata Dost · बोलो, खाता लिखो</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;600;700;800&family=Fraunces:ital,wght@1,500&display=swap">
   <link rel="stylesheet" href="khata.css">
 </head>
 <body>
 <header class="top">
-  <div>
-    <h1>खाता दोस्त <span>Khata Dost</span></h1>
-    <p id="shop" class="muted"></p>
-  </div>
-  <div class="total">
-    <span class="muted">कुल बाकी</span>
-    <strong id="totalDue">—</strong>
+  <div class="top-inner">
+    <div class="brand">
+      <div class="seal" aria-hidden="true">₹</div>
+      <div>
+        <h1>खाता दोस्त <span>Khata Dost</span></h1>
+        <p class="tagline">Bolo, khata likho.</p>
+        <p id="shop" class="shop"></p>
+      </div>
+    </div>
+    <div class="total">
+      <span class="lbl">कुल बाकी</span>
+      <strong id="totalDue">—</strong>
+    </div>
   </div>
 </header>
 
@@ -23,6 +32,7 @@
 
 <main>
   <section class="talk card" aria-label="Talk">
+    <span class="tag">01 / बोलिए · Speak</span>
     <div id="bubble" class="bubble" aria-live="polite">
       <p id="botSays">नमस्ते! बोलिए, किस ग्राहक का हिसाब लिखना है?</p>
       <p id="heard" class="heard"></p>
@@ -40,17 +50,24 @@
         <button id="yesBtn" class="yes">✓ हाँ, लिखो</button>
         <button id="noBtn" class="no">✗ नहीं</button>
       </div>
+      <div id="stamp" class="stamp" aria-hidden="true">लिख दिया ✓</div>
     </article>
 
     <article id="optionsBox" class="options" hidden></article>
 
-    <button id="mic" class="mic" aria-label="बोलने के लिए दबाएँ">
-      <span class="mic-icon" aria-hidden="true">🎙</span>
-      <span id="micLabel">बोलिए</span>
-    </button>
+    <div id="micWrap" class="mic-wrap idle-hint">
+      <span class="ring r2" aria-hidden="true"></span>
+      <span class="ring r1" aria-hidden="true"></span>
+      <button id="mic" class="mic" aria-label="बोलने के लिए दबाएँ">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3.5"/>
+        </svg>
+        <span id="micLabel">बोलिए</span>
+      </button>
+    </div>
     <div id="status" class="status" aria-live="polite"></div>
 
-    <label class="handsfree"><input type="checkbox" id="handsfree" checked> हाथ खाली नहीं? "हाँ" अपने-आप सुनूँगा (hands-free confirm)</label>
+    <label class="handsfree"><input type="checkbox" id="handsfree" checked> हाथ खाली नहीं? "हाँ" अपने-आप सुनूँगा</label>
 
     <form id="typed" class="typed">
       <input id="text" placeholder="या लिखें: Ramesh ko 250 udhaar" autocomplete="off" aria-label="Type instead">
@@ -68,27 +85,27 @@
     </div>
 
     <article id="receipt" class="receipt" hidden>
-      <h3>ग्राहक की रसीद · Customer's voice receipt</h3>
+      <span class="tag">ग्राहक की रसीद · Customer receipt</span>
       <p id="receiptText"></p>
       <div class="row">
         <button id="receiptPlay">▶ सुनें</button>
         <a id="receiptWa" target="_blank" rel="noopener">WhatsApp पर भेजें</a>
       </div>
-      <p class="muted small">ग्राहक को उसकी भाषा में पक्की रसीद, ताकि बाद में झगड़ा न हो।</p>
+      <p class="muted small">ग्राहक को उसकी भाषा में रसीद, ताकि बाद में झगड़ा न हो।</p>
     </article>
   </section>
 
   <section class="side">
     <article class="card">
       <div class="row between">
-        <h2>आज की याद · Due today</h2>
+        <span class="tag">02 / आज की याद · Due today</span>
         <span id="windowNote" class="muted small"></span>
       </div>
       <ul id="reminders" class="list"></ul>
     </article>
 
     <article class="card">
-      <h2>खाता · Customers</h2>
+      <span class="tag">03 / खाता · Customers</span>
       <ul id="customers" class="list"></ul>
     </article>
 
@@ -112,12 +129,12 @@
       <ul id="detailEntries" class="list"></ul>
     </article>
 
-    <article class="card small muted">
-      <h2>भरोसा · Why you can trust it</h2>
-      <ul class="plain">
+    <article class="card trust">
+      <span class="tag">04 / भरोसा · Why you can trust it</span>
+      <ul>
         <li>बिना आपके "हाँ" के कुछ भी सेव नहीं होता।</li>
         <li>बोली गई रकम डेटाबेस से आती है, AI से नहीं।</li>
-        <li>दो अलग पढ़ने वाले (नियम + AI) रकम मिलाते हैं; अलग हों तो पूछता है।</li>
+        <li>AI key हो तो नियम + AI दोनों रकम मिलाते हैं; अलग हों तो पूछता है।</li>
         <li>याद सिर्फ़ उन्हें, जिन्होंने हाँ कहा; सुबह 8 से शाम 7 बजे तक।</li>
       </ul>
       <button id="resetDemo" class="link">डेमो फिर से शुरू करें (reset demo data)</button>
@@ -125,6 +142,9 @@
   </section>
 </main>
 
-<script src="khata.js"></script>
+<!-- Motion only. If these fail to load (offline), the app works the same without animation. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+<script src="motion.js" defer></script>
+<script src="khata.js" defer></script>
 </body>
 </html>

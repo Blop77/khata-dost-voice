@@ -5,6 +5,12 @@ const BCP = { "hi-IN": "hi-IN", "mr-IN": "mr-IN", "en-IN": "en-IN" };
 let config = { speech: false, llm: null };
 let state = { lang: "hi-IN", awaiting: null, busy: false };
 let rec = null; // active recording
+const Motion = window.Motion || { on: false, intro() {}, say: (el, t) => (el.textContent = t), draft: (c, a, v) => (a.textContent = v ? "₹" + v : "₹ ?"),
+  saved: (c, s, done) => done && done(), number: (el, v, p = "") => (el.textContent = p + "₹" + Number(v).toLocaleString("en-IN")), list() {}, pop() {} };
+let listsShown = false;
+const AVATAR = ["#b45309", "#0f766e", "#7c3aed", "#be123c", "#1d4ed8", "#4d7c0f", "#c2410c", "#0e7490"];
+const avatarColor = (name) => AVATAR[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR.length];
+function setLevel(v) { $("micWrap").style.setProperty("--level", Math.max(0, Math.min(1, v)).toFixed(3)); }
 
 // ---------- small helpers ----------
 const rupees = (n) => "₹" + Number(n).toLocaleString("en-IN");
@@ -66,6 +72,7 @@ async function startRecording({ auto = false } = {}) {
     const now = performance.now();
     if (now - started < 400) noise = Math.max(noise, rms); // learn the shop's background level
     const loud = rms > Math.max(0.02, noise * 2.2);
+    setLevel((rms - noise) / Math.max(0.08, noise * 6)); // the rings swell with the owner's voice
     if (loud) { heardSpeech = true; quietSince = now; }
     const quiet = now - quietSince;
     if ((heardSpeech && quiet > 1200) || now - started > 15000) return stopRecording();
@@ -118,11 +125,16 @@ function startBrowserRecognition({ auto }) {
 }
 
 function micRecording(auto) {
+  $("micWrap").classList.add("rec");
+  $("micWrap").classList.remove("idle-hint");
+  if (!config.speech) setLevel(0.45); // browser recognition gives no levels; show a steady ring
   $("mic").classList.add("rec");
   $("micLabel").textContent = auto ? "\"हाँ\" बोलिए…" : "सुन रहा हूँ…";
   setStatus(auto ? "हाँ / नहीं बोलिए" : "बोलिए, रुकते ही भेज दूँगा");
 }
 function micIdle() {
+  $("micWrap").classList.remove("rec");
+  setLevel(0);
   $("mic").classList.remove("rec");
   $("micLabel").textContent = "बोलिए";
 }
@@ -166,18 +178,23 @@ function sendText(text) {
 function render(d) {
   state.lang = d.lang || state.lang;
   state.awaiting = d.awaiting;
-  $("botSays").textContent = d.reply;
+  Motion.say($("botSays"), d.reply);
   $("heard").textContent = d.transcript ? `आपने कहा: "${d.transcript}"` : "";
 
   const draft = d.draft;
   const card = $("draft");
-  if (draft && draft.name) {
+  if (d.saved && !card.hidden) {
+    // Stamp the card that was just confirmed, then fold it away.
+    Motion.saved(card, $("stamp"), () => { card.hidden = true; $("draftAmount").dataset.v = 0; });
+  } else if (draft && draft.name) {
+    const isNew = card.hidden || $("draftName").textContent !== draft.name;
     card.hidden = false;
     card.className = "draft " + (draft.type || "");
     $("draftName").textContent = draft.name;
     $("draftType").textContent = draft.type === "jama" ? "जमा" : draft.type === "udhaar" ? "उधार" : "?";
     $("draftType").className = "badge " + (draft.type || "");
-    $("draftAmount").textContent = draft.amount ? rupees(draft.amount) : "₹ ?";
+    if (isNew) $("draftAmount").dataset.v = 0;
+    Motion.draft(card, $("draftAmount"), draft.amount, isNew);
     $("draftMeta").textContent = [draft.items, draft.due_date && "तारीख़: " + fmtDate(draft.due_date)].filter(Boolean).join(" · ");
     const checks = $("draftChecks");
     checks.innerHTML = "";
@@ -186,6 +203,7 @@ function render(d) {
     $("yesBtn").hidden = !["confirm", "confirm_new_customer"].includes(d.awaiting);
   } else {
     card.hidden = true;
+    $("draftAmount").dataset.v = 0;
   }
 
   const box = $("optionsBox");
@@ -204,6 +222,7 @@ function render(d) {
     const c = d.saved.customer;
     $("receiptWa").href = waLink(c.phone, d.saved.receipt);
     $("receiptWa").textContent = c.phone ? "WhatsApp पर भेजें" : "WhatsApp पर भेजें (नंबर नहीं है)";
+    Motion.pop($("receipt"));
   }
   if (d.view === "customer" && d.customer) showDetail(d.customer.id);
   if (d.view === "reminders" || d.view === "dues") refreshLedger();
@@ -212,7 +231,7 @@ function render(d) {
 async function refreshLedger(flashId) {
   const data = await (await fetch("/api/khata/ledger")).json();
   $("shop").textContent = data.shop;
-  $("totalDue").textContent = rupees(data.total_due);
+  Motion.number($("totalDue"), data.total_due);
   $("windowNote").textContent = data.reminder_window_open ? "भेजने का समय: अभी ठीक है" : "भेजने का समय: सुबह 8 – शाम 7";
 
   const ul = $("customers");
@@ -221,9 +240,13 @@ async function refreshLedger(flashId) {
     const li = el("li", "click");
     if (c.id === flashId) li.classList.add("flash");
     const row = el("div", "cust");
-    const left = el("div");
-    left.append(el("strong", "", c.name));
-    if (c.due_date && c.balance > 0) left.append(el("div", "muted small", "तारीख़: " + fmtDate(c.due_date)));
+    const left = el("div", "who");
+    const av = el("span", "avatar", [...c.name][0].toUpperCase());
+    av.style.background = avatarColor(c.name);
+    const txt = el("div");
+    txt.append(el("strong", "", c.name));
+    if (c.due_date && c.balance > 0) txt.append(el("div", "muted small", "तारीख़: " + fmtDate(c.due_date)));
+    left.append(av, txt);
     const amt = el("span", "amt " + (c.balance > 0 ? "owe" : "clear"), c.balance > 0 ? rupees(c.balance) : c.balance < 0 ? "+" + rupees(-c.balance) : "✓ साफ़");
     row.append(left, amt);
     li.append(row);
@@ -260,6 +283,7 @@ async function refreshLedger(flashId) {
     li.append(actions);
     rl.append(li);
   }
+  if (!listsShown) { listsShown = true; Motion.list([...ul.children, ...rl.children]); }
 }
 
 async function showDetail(id) {
@@ -310,8 +334,13 @@ $("detailForm").onsubmit = async (e) => {
   refreshLedger();
 };
 $("resetDemo").onclick = async () => {
-  await fetch("/api/khata/reset-demo", { method: "POST" });
-  location.reload();
+  let res = await fetch("/api/khata/reset-demo", { method: "POST" });
+  if (res.status === 403) { // public link: the owner sets RESET_PIN
+    const form = new FormData();
+    form.append("pin", prompt("Reset PIN") || "");
+    res = await fetch("/api/khata/reset-demo", { method: "POST", body: form });
+  }
+  if (res.ok) location.reload(); else setStatus("Reset नहीं हुआ (" + res.status + ")");
 };
 
 (async function init() {
@@ -320,5 +349,6 @@ $("resetDemo").onclick = async () => {
   notes.push(config.speech ? "आवाज़: Sarvam (हिन्दी, मराठी, Hinglish…)" : '<span class="warn">Sarvam key not set</span> → ब्राउज़र की आवाज़ पहचान');
   notes.push(config.llm ? `समझ: AI (${config.llm}) + नियम` : '<span class="warn">AI key not set</span> → सिर्फ़ नियम (Hindi/Hinglish/Marathi)');
   $("modes").innerHTML = notes.join(" · ");
+  Motion.intro();
   refreshLedger();
 })();

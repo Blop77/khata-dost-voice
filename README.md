@@ -1,6 +1,6 @@
 # Khata Dost · बोलो, खाता लिखो
 
-**A voice ledger for kirana udhaar.** The shop owner says the entry out loud while serving a customer. Khata Dost reads it back, saves it only after the owner says **"haan"**, keeps every balance, and gives the customer a receipt in their own language.
+**A voice ledger for kirana udhaar.** The shop owner says the entry out loud while serving a customer. Khata Dost reads it back, saves it only after the owner says **"haan"**, keeps every balance, and prepares a receipt in the customer's own language that the owner sends with one tap.
 
 Built for **India Runs on Voice** (Scaler × Wispr Flow), Round 2 · theme: *Livelihoods and small business*.
 
@@ -16,7 +16,7 @@ Open **http://localhost:8000**. It starts on a small labelled demo khata (Ramesh
 
 With no keys it still works end to end:
 - **Speak** in Chrome (it uses the browser's own speech recognition), or **type** in the box, or tap an example chip.
-- Understanding runs on the built-in Hindi/Hinglish/Marathi rule parser.
+- Understanding runs on the built-in rule parser (Hindi, Hinglish, basic Marathi).
 - Replies are spoken with the phone's or laptop's own voice.
 
 The top bar says which mode is active ("key not set" when a key is missing). CI starts this exact container with no keys on every push and checks that the main screen loads and that a typed Hindi entry is understood.
@@ -56,7 +56,7 @@ A ledger is money, so the design is built around not getting amounts wrong:
 
 1. **Nothing is saved until the owner hears the entry and says yes.** A stray "haan" after some other question never saves an old draft; the app reads the entry back again first.
 2. **The AI never speaks a number.** It only extracts the entry. Spoken amounts and balances come from the draft and the SQLite database, through fixed templates.
-3. **Two independent readers.** The rule parser (`app/parser.py`) and the AI both read every sentence. If they disagree on the amount, the app asks ("7 रुपये या 60 रुपये? फिर से रकम बोलिए").
+3. **Two independent readers (when an AI key is set).** The rule parser (`app/parser.py`) and the AI both read every sentence. With no key, the rule parser works alone. If they disagree on the amount, the app asks ("7 रुपये या 60 रुपये? फिर से रकम बोलिए").
 4. **Big amounts are also read digit by digit** ("7200 रुपये, यानी 7 2 0 0").
 5. **Names match across scripts and spellings** (रमेश = Ramesh = Rmesh). If more than one customer matches, the app asks which one. A new name must be confirmed before it is used.
 6. **Misheard items are corrected** against a kirana catalogue, and the correction is shown on screen.
@@ -66,7 +66,8 @@ A ledger is money, so the design is built around not getting amounts wrong:
 
 - Reminders read as an **account statement from the shop**, not a collection notice. WhatsApp's policy bans debt collection.
 - They go only to customers whose consent is recorded **with a timestamp**, and only between **8 am and 7 pm**.
-- Each message is written in the customer's language (Hindi, Marathi or English).
+- Each message is written in the customer's language (Hindi, Marathi or English) and ends with how to stop the messages. The owner turns consent off when a customer asks.
+- On a public link, set `RESET_PIN` so visitors can't reset the demo khata. Public endpoints are rate-limited.
 - The only data stored is name, phone, language, amounts, items, due dates and the sentence that was heard. Audio is not stored.
 
 ## What is real and what is not
@@ -75,7 +76,7 @@ A ledger is money, so the design is built around not getting amounts wrong:
 |---|---|
 | Voice entry, read-back, spoken yes, corrections, undo, balances, dues, reminders (Hindi, Hinglish, Marathi, English) | Sending through the WhatsApp Business API. The prototype opens a WhatsApp share link and offers the voice note as an MP3 |
 | Customer receipts in the customer's language, consent log, 8 am–7 pm rule | Reply templates for languages beyond Hindi, Marathi and English |
-| Keyless mode, one-command Docker start, 33 automated tests, CI | Login, multiple shops or staff, offline queue, backups |
+| Keyless mode, one-command Docker start, 53 automated tests, CI | Login, multiple shops or staff, offline queue, backups |
 
 Demo customers are synthetic. The ledger is a single-shop SQLite file (`/data/khata.db` in Docker).
 
@@ -99,4 +100,9 @@ mic ─▶ Sarvam saaras STT (or browser speech) ─▶ rule parser ─┐
 | `tests/` | Keyless tests for parsing and the conversation (`pytest`) |
 | `docs/` | Pitch deck (`Khata_Dost_pitch.pdf`) and the script that builds it |
 
-Built solo during the hackathon. The code and prompts were dictated with **Wispr Flow**.
+## What was built when
+
+- **Round 1 (Nov 2026):** a generic voice pipeline written for this hackathon: Sarvam STT, LLM extraction, Sarvam streaming TTS. That is `app/speech.py`, `app/brain.py`, `app/tracks.py`, `tracks/` and the old UI now at `/starter.html` (about 480 lines).
+- **Round 2 (27–30 Nov):** everything that makes this Khata Dost, about 2,000 lines. That is the rule parser, the ledger, the conversation engine, the trust checks, the new UI and motion, reminders and consent, Docker, CI and the tests. `git log` shows each step.
+
+Built solo. The code and prompts were dictated with **Wispr Flow**.

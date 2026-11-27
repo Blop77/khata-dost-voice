@@ -9,3 +9,8 @@ research_notes/
 reports/
 data/
 .pytest_cache/
+CLAUDE.md
+AGENTS.md
+activity*.txt
+.claude/
+.vscode/

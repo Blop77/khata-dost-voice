@@ -76,6 +76,9 @@ T = {
     "reminders": {"hi-IN": "{count} लोगों की तारीख़ आ गई: {names}। स्क्रीन पर भेजने का बटन है।",
                   "mr-IN": "{count} जणांची तारीख आली: {names}. पाठवण्याचे बटण स्क्रीनवर आहे.",
                   "en-IN": "{count} people are due: {names}. Send buttons are on screen."},
+    "one_at_a_time": {"hi-IN": "एक-एक करके बोलिए। पहले {name} का बताइए।", "mr-IN": "एकेक करून सांगा. आधी {name} यांचे सांगा.",
+                      "en-IN": "One at a time, please. Tell me {name}'s entry first."},
+    "which_new": {"hi-IN": "{old} या नया ग्राहक {new}?", "mr-IN": "{old} की नवीन ग्राहक {new}?", "en-IN": "{old}, or a new customer {new}?"},
     "unclear": {"hi-IN": "समझ नहीं आया। ऐसे बोलिए: रमेश को ढाई सौ का उधार।",
                 "mr-IN": "समजले नाही. असे सांगा: रमेशला अडीचशे उधार.",
                 "en-IN": "Sorry, I didn't get that. Try: Ramesh, 250 credit."},
@@ -84,9 +87,9 @@ T = {
 }
 
 REMINDER = {
-    "hi-IN": "{name} जी, नमस्ते। {shop} में आपका {balance} बाकी है{due}। सुविधा हो तो चुका दीजिए। धन्यवाद।",
-    "mr-IN": "{name} जी, नमस्कार. {shop} मध्ये तुमचे {balance} बाकी आहे{due}. सोयीने भरा. धन्यवाद.",
-    "en-IN": "Namaste {name} ji. Your balance at {shop} is {balance}{due}. Please pay when convenient. Thank you.",
+    "hi-IN": "{name} जी, नमस्ते। {shop} में आपका {balance} बाकी है{due}। सुविधा हो तो चुका दीजिए। धन्यवाद। (ये मैसेज बंद करने के लिए \"बंद\" लिखें)",
+    "mr-IN": "{name} जी, नमस्कार. {shop} मध्ये तुमचे {balance} बाकी आहे{due}. सोयीने भरा. धन्यवाद. (हे मेसेज बंद करण्यासाठी \"बंद\" लिहा)",
+    "en-IN": "Namaste {name} ji. Your balance at {shop} is {balance}{due}. Please pay when convenient. Thank you. (Reply STOP to stop these messages)",
 }
 RECEIPT = {
     "hi-IN": "{name} जी, {shop} में आज {amount} {type} लिखा गया। कुल बाकी {balance}।",
@@ -200,6 +203,10 @@ def merge(rules: dict, ai: dict | None) -> dict:
     # a bare yes/no is unambiguous: trust the rules if the model hedges
     if rules["intent"] in ("confirm", "cancel") and ai["intent"] in ("unclear", "entry"):
         out["intent"] = rules["intent"]
+    if ai["intent"] == "confirm" and rules["intent"] != "confirm":
+        out["intent"] = "correct" if rules["intent"] in ("correct", "entry") else rules["intent"]
+    if rules["intent"] == "multiple":
+        out["intent"] = "multiple"
     for k in ("customer_name", "entry_type", "items", "due_date"):
         out[k] = ai.get(k) or rules.get(k)
     a, r = ai.get("amount_rupees"), rules.get("amount_rupees")
@@ -222,6 +229,11 @@ def _resolve_customer(sess: dict) -> dict | None:
     if draft.get("customer_id") or draft.get("new_customer"):
         return None
     matches = ledger.find_customers(draft["name"])
+    if len(matches) == 1 and ledger.name_key(matches[0]["name"]).split(" ")[0] != ledger.name_key(draft["name"]).split(" ")[0]:
+        # "Sunil" sounds like "Sunita": never move money to a different person silently
+        sess["awaiting"] = "which_customer"
+        sess["options"] = [{"id": matches[0]["id"], "name": matches[0]["name"]}, {"id": None, "name": draft["name"], "new": True}]
+        return _reply(sess, say("which_new", lang, old=matches[0]["name"], new=draft["name"]))
     if len(matches) == 1:
         draft["customer_id"], draft["name"] = matches[0]["id"], matches[0]["name"]
         return None
@@ -238,6 +250,9 @@ def pick_option(text: str, options: list[dict]) -> dict | None:
     said = ledger.name_key(text)
     if not said or not options:
         return None
+    new_opt = next((o for o in options if o.get("new")), None)
+    if new_opt and re.search(r"naya|naye|नया|नए|new|नवीन|navin", text.lower()):
+        return new_opt
     if re.search(r"pehl|पहल|first|pahil|पहिल", text.lower()):
         return options[0]
     if re.search(r"dusr|दूसर|second|dusra", text.lower()) and len(options) > 1:
@@ -331,7 +346,7 @@ async def handle(sid: str, text: str, language_code: str | None = None) -> dict:
 
     # A different customer's name means a brand-new entry: never carry the old draft's items or amount over.
     draft = sess.get("draft")
-    if (draft and draft.get("name") and u.get("customer_name") and u["intent"] in ("entry", "correct", "unclear")
+    if (draft and draft.get("name") and u.get("customer_name") and u["intent"] in ("entry", "unclear")
             and awaiting not in ("name", "which_customer", "confirm_new_customer")
             and not _same_person(draft["name"], u["customer_name"])):
         sess.update(draft={"name": None, "heard": text}, awaiting=None, options=[])
@@ -344,6 +359,10 @@ async def handle(sid: str, text: str, language_code: str | None = None) -> dict:
             return {**_next_question(sess), **meta}
     if awaiting == "which_customer":
         opt = pick_option(text, sess["options"])
+        if opt and opt.get("new"):
+            sess["draft"].update(customer_id=None, name=opt["name"], new_customer=True)
+            sess["options"] = []
+            return {**_next_question(sess), **meta}
         if opt:
             sess["draft"].update(customer_id=opt["id"], name=opt["name"])
             sess["options"] = []
@@ -378,6 +397,8 @@ async def handle(sid: str, text: str, language_code: str | None = None) -> dict:
         return {**_next_question(sess), **meta}
 
     intent = u["intent"]
+    if intent == "multiple":
+        return {**_reply(sess, say("one_at_a_time", lang, name=u.get("customer_name") or "")), **meta}
     if intent == "confirm" and sess.get("draft") and awaiting == "confirm":
         return {**_save(sess, sess["draft"].get("heard", text)), **meta}
     if intent == "confirm" and sess.get("draft"):

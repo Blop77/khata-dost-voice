@@ -32,7 +32,7 @@ def say(*lines, sid="t"):
 
 @pytest.mark.parametrize("text,amount", [
     ("Ramesh ko dhai sau ka udhaar", 250), ("रमेश को ढाई सौ का उधार", 250), ("dedh hazaar", 1500),
-    ("sawa sau", 125), ("paune do sau", 175), ("saadhe teen sau", 350), ("do hazaar paanch sau", 2500),
+    ("sawa sau", 125), ("sava do sau", 225), ("pachpan rupaye", 55), ("barah sau", 1200), ("paune do sau", 175), ("saadhe teen sau", 350), ("do hazaar paanch sau", 2500),
     ("रमेशला अडीचशे उधार", 250), ("₹1,200 udhaar", 1200), ("aata 5 kilo, 60 rupaye", 60),
 ])
 def test_amounts(text, amount):
@@ -150,3 +150,58 @@ def test_which_customer_answers(answer, name):
                                        ("गणेशला तीनशे उधार दिले", "mr-IN"), ("रमेशला अडीचशे उधार", "mr-IN")])
 def test_hindi_vs_marathi(text, lang):
     assert parser.script_language(text) == lang
+
+
+# --- red-team regressions -----------------------------------------------------------------
+
+def test_yes_with_a_change_corrects_instead_of_saving():
+    say("Ramesh ko dhai sau ka udhaar")
+    r = say("haan, 400 likho")
+    assert not r.get("saved") and r["draft"]["amount"] == 400 and r["awaiting"] == "confirm"
+    assert r["lang"] == "hi-IN"
+
+
+def test_chatter_is_not_a_yes():
+    say("Ramesh ko dhai sau ka udhaar")
+    assert not say("ho gaya").get("saved")
+
+
+def test_name_correction_keeps_amount():
+    say("Ramesh ko 300 ka udhaar")
+    r = say("nahi nahi, Suresh")
+    assert r["draft"]["name"] == "Suresh" and r["draft"]["amount"] == 300
+
+
+def test_similar_but_different_name_asks():
+    r = say("Sunil ko 100 udhaar")
+    assert r["awaiting"] == "which_customer" and "Sunita" in r["reply"] and "Sunil" in r["reply"]
+    r = say("naya")
+    assert r["draft"]["name"] == "Sunil" and r["draft"].get("new_customer")
+
+
+def test_two_entries_in_one_breath_are_not_silently_dropped():
+    r = say("Ramesh ko 200 udhaar aur Sunita ko 100 udhaar")
+    assert "एक-एक" in r["reply"] and r["draft"] is None
+
+
+@pytest.mark.parametrize("text,name,etype,amount", [
+    ("Ramesh bhai ko 200 udhaar", "Ramesh", "udhaar", 200),
+    ("Ramesh ji ne 200 de diye", "Ramesh", "jama", 200),
+    ("Ramesh 200 udhaar", "Ramesh", "udhaar", 200),
+    ("Ramesh ko 25 tarikh tak 300 udhaar", "Ramesh", "udhaar", 300),
+    ("Sunita ne 800 mein se 300 diye", "Sunita", "jama", 300),
+    ("Ramesh ka udhaar 300 kam karo", "Ramesh", "jama", 300),
+    ("Ramesh ko 200 udhaar diye", "Ramesh", "udhaar", 200),
+    ("सुरेशला दीड हजार उधार", "सुरेश", "udhaar", 1500),
+    ("रमेशला साडेतीनशे उधार", "रमेश", "udhaar", 350),
+    ("गणेशने पाचशे रुपये दिले", "गणेश", "jama", 500),
+    ("Ramesh ko teen so udhaar", "Ramesh", "udhaar", 300),
+])
+def test_counter_phrasings(text, name, etype, amount):
+    r = parser.understand(text)
+    assert (r["customer_name"], r["entry_type"], r["amount_rupees"]) == (name, etype, amount)
+
+
+def test_due_date_phrases():
+    assert parser.parse_due("das din mein dega", FRI) == "2026-12-07"
+    assert parser.parse_due("Sunday tak, Monday nahi", FRI) == "2026-11-29"

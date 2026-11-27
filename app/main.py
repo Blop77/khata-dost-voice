@@ -1,5 +1,6 @@
 """Voice turn pipeline: audio -> transcript (Sarvam) -> understanding + reply (Claude) -> speech (Sarvam)."""
 import json
+import os
 import time
 from collections import defaultdict, deque
 from pathlib import Path
@@ -40,11 +41,13 @@ def config():
 
 @app.post("/api/turn")
 async def turn(
+    request: Request,
     track: str = Form(...),
     history: str = Form("[]"),
     text: str | None = Form(None),
     audio: UploadFile | None = File(None),
 ):
+    _limit(request, "starter", 20)
     tracks = load_tracks()
     if track not in tracks:
         raise HTTPException(404, f"unknown track {track!r}")
@@ -81,7 +84,9 @@ _hits: dict[tuple[str, str], deque] = defaultdict(deque)
 
 def _limit(request: Request, bucket: str, per_minute: int) -> None:
     """Small in-memory rate limit so a public demo link can't run up the speech and AI bills."""
-    ip = request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "?")
+    host = request.client.host if request.client else "?"
+    # Trust Cloudflare's visitor header only when the request really came through the local tunnel.
+    ip = request.headers.get("cf-connecting-ip", host) if host in ("127.0.0.1", "::1") else host
     q, now = _hits[(ip, bucket)], time.monotonic()
     while q and now - q[0] > 60:
         q.popleft()
@@ -141,9 +146,10 @@ def khata_customer(customer_id: int):
 
 
 @app.post("/api/khata/customer/{customer_id}")
-def khata_update_customer(customer_id: int, phone: str | None = Form(None), language: str | None = Form(None),
+def khata_update_customer(request: Request, customer_id: int, phone: str | None = Form(None), language: str | None = Form(None),
                           consent: bool | None = Form(None)):
     """Owner adds a phone number, the customer's language, or records the customer's yes/no to reminders."""
+    _limit(request, "customer", 30)
     fields = {k: v for k, v in {"phone": phone, "language": language, "reminder_consent": consent}.items() if v is not None}
     c = ledger.update_customer(customer_id, **fields)
     if not c:
@@ -152,7 +158,12 @@ def khata_update_customer(customer_id: int, phone: str | None = Form(None), lang
 
 
 @app.post("/api/khata/reset-demo")
-def khata_reset_demo():
+def khata_reset_demo(request: Request, pin: str | None = Form(None)):
+    """Reloads the demo khata. On a public link, set RESET_PIN so visitors can't wipe it."""
+    _limit(request, "reset", 5)
+    need = os.getenv("RESET_PIN")
+    if need and pin != need:
+        raise HTTPException(403, "PIN required")
     ledger.reset_demo()
     khata.SESSIONS.clear()
     return {"ok": True}
