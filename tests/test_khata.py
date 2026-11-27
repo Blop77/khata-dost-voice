@@ -137,3 +137,16 @@ def test_new_name_starts_a_fresh_entry():
 def test_english_owner_gets_english():
     r = say("Give Priya credit of 120 rupees")
     assert r["lang"] == "en-IN"
+
+
+@pytest.mark.parametrize("answer,name", [("दूधवाला", "Ramesh doodhwala"), ("doodhwala", "Ramesh doodhwala"),
+                                         ("pehla", "Ramesh"), ("dusra", "Ramesh doodhwala")])
+def test_which_customer_answers(answer, name):
+    say("Rmesh ko 50 ka udhaar")
+    assert say(answer)["draft"]["name"] == name
+
+
+@pytest.mark.parametrize("text,lang", [("आज किसको याद दिलाना है?", "hi-IN"), ("मुझे पैसे मिला", "hi-IN"),
+                                       ("गणेशला तीनशे उधार दिले", "mr-IN"), ("रमेशला अडीचशे उधार", "mr-IN")])
+def test_hindi_vs_marathi(text, lang):
+    assert parser.script_language(text) == lang

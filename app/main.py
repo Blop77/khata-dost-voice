@@ -1,13 +1,14 @@
 """Voice turn pipeline: audio -> transcript (Sarvam) -> understanding + reply (Claude) -> speech (Sarvam)."""
 import json
 import time
+from collections import defaultdict, deque
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile  # noqa: E402
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile  # noqa: E402
 from fastapi.responses import StreamingResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 
@@ -75,13 +76,31 @@ async def turn(
 
 # --- Khata Dost ----------------------------------------------------------------------------
 
+_hits: dict[tuple[str, str], deque] = defaultdict(deque)
+
+
+def _limit(request: Request, bucket: str, per_minute: int) -> None:
+    """Small in-memory rate limit so a public demo link can't run up the speech and AI bills."""
+    ip = request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "?")
+    q, now = _hits[(ip, bucket)], time.monotonic()
+    while q and now - q[0] > 60:
+        q.popleft()
+    if len(q) >= per_minute:
+        raise HTTPException(429, "थोड़ा रुकिए - too many requests, try again in a minute")
+    q.append(now)
+
+
 @app.post("/api/khata/turn")
 async def khata_turn(
+    request: Request,
     session: str = Form(...),
     text: str | None = Form(None),
     audio: UploadFile | None = File(None),
 ):
     """One spoken (or typed) turn of the ledger conversation."""
+    _limit(request, "turn", 30)
+    if text and len(text) > 500:
+        raise HTTPException(413, "too long - say one entry at a time")
     language_code, t0 = None, time.perf_counter()
     if audio is not None:
         data = await audio.read()
@@ -140,9 +159,12 @@ def khata_reset_demo():
 
 
 @app.get("/api/tts")
-async def tts(text: str, lang: str = "en-IN"):
+async def tts(request: Request, text: str, lang: str = "en-IN"):
     if not speech.speech_enabled():
         raise HTTPException(503, "SARVAM_API_KEY not set")
+    _limit(request, "tts", 40)
+    if len(text) > 400:  # ledger replies and reminders are short; don't let a public link synthesize essays
+        raise HTTPException(413, "text too long")
     return StreamingResponse(speech.stream_speech(text, lang), media_type="audio/mpeg")
 
 

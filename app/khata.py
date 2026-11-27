@@ -232,6 +232,28 @@ def _resolve_customer(sess: dict) -> dict | None:
     return _reply(sess, say("confirm_new", lang, name=draft["name"]))
 
 
+def pick_option(text: str, options: list[dict]) -> dict | None:
+    """Which of the offered customers did the owner mean? "doodhwala", "दूधवाला", "pehla", or the full name."""
+    import difflib
+    said = ledger.name_key(text)
+    if not said or not options:
+        return None
+    if re.search(r"pehl|पहल|first|pahil|पहिल", text.lower()):
+        return options[0]
+    if re.search(r"dusr|दूसर|second|dusra", text.lower()) and len(options) > 1:
+        return options[1]
+    best, best_score = None, 0.0
+    for opt in options:
+        key = ledger.name_key(opt["name"])
+        parts = key.split()
+        # Distinguishing words count most: "doodhwala" picks "Ramesh doodhwala", not plain "Ramesh".
+        candidates = [key] + parts[1:] + ([parts[0]] if len(parts) == 1 else [])
+        score = max(difflib.SequenceMatcher(None, said, c).ratio() for c in candidates)
+        if score > best_score:
+            best, best_score = opt, score
+    return best if best_score >= 0.72 else None
+
+
 def _same_person(a: str, b: str) -> bool:
     ka, kb = ledger.name_key(a), ledger.name_key(b)
     return ka == kb or ka.split(" ")[0] == kb.split(" ")[0]
@@ -321,19 +343,14 @@ async def handle(sid: str, text: str, language_code: str | None = None) -> dict:
             sess["draft"]["amount"] = u["amount_rupees"]
             return {**_next_question(sess), **meta}
     if awaiting == "which_customer":
-        low = text.lower()
-        for opt in sess["options"]:
-            words = [w for w in ledger.name_key(opt["name"]).split()]
-            if any(w and w in ledger.name_key(low) for w in words[1:]) or ledger.name_key(low) == ledger.name_key(opt["name"]):
-                sess["draft"].update(customer_id=opt["id"], name=opt["name"])
-                sess["options"] = []
-                return {**_next_question(sess), **meta}
-        first = re.search(r"pehl|पहल|first|1", low)
-        if first and sess["options"]:
-            opt = sess["options"][0]
+        opt = pick_option(text, sess["options"])
+        if opt:
             sess["draft"].update(customer_id=opt["id"], name=opt["name"])
             sess["options"] = []
             return {**_next_question(sess), **meta}
+        if u["intent"] not in ("dues_query", "customer_query", "undo", "reminders", "cancel") and not u.get("amount_rupees"):
+            names = ", ".join(o["name"] for o in sess["options"])
+            return {**_reply(sess, say("which", lang, options=names)), **meta}
     if awaiting == "confirm_new_customer":
         if u["intent"] == "confirm" or parser.is_yes(text):
             sess["draft"]["new_customer"] = True

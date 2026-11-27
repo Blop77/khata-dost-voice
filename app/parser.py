@@ -242,8 +242,9 @@ def parse_items(text: str) -> tuple[str | None, list[str]]:
                 fixes.append(f"{raw[i]} -> {name}")
             qty = ""
             for k in (i + 1, i - 2):  # "aata 5 kilo" or "5 kilo aata"
-                if 0 <= k < len(toks) - 1 and re.fullmatch(r"\d+(?:\.\d+)?", toks[k]) and toks[k + 1] in QTY_UNITS:
-                    qty = f" {toks[k]} {toks[k + 1]}"
+                if 0 <= k < len(toks) - 1 and _word_value(toks[k]) is not None and toks[k + 1] in QTY_UNITS:
+                    n = _word_value(toks[k])
+                    qty = f" {int(n) if n == int(n) else n} {toks[k + 1]}"  # "पाँच किलो" -> "5 किलो"
                     break
             if name not in [x.split(" ")[0] for x in items]:
                 items.append(name + qty)
@@ -288,7 +289,12 @@ def understand(text: str, has_draft: bool = False, today: date | None = None) ->
 def script_language(text: str) -> str:
     """Guess the reply language from typed text: Marathi, Hindi (Devanagari or Roman Hinglish) or English."""
     if re.search(r"[ऀ-ॿ]", text):
-        if re.search(r"(ला|चे|ची|आहे|नको|दिले|झाले|पर्यंत|उद्या|अडीच|शे\b)", text):
+        end = r"(?=[\s,।.?!]|$)"  # Devanagari matras break \b, so mark word ends by hand
+        marathi = (rf"(आहे|नको|दिले|झाले|पर्यंत|उद्या|अडीच|लिहू|बरोबर|नाही{end}|[ऀ-ॿ]+शे{end}|"
+                   rf"[ऀ-ॿ]{{2,}}ला{end})")
+        # "-ला" alone is also Hindi ("मिला", "दिला"), so it only counts next to money talk
+        m = re.search(marathi, text)
+        if m and (not m.group(0).endswith("ला") or parse_amount(text) or _has(text, UDHAAR + JAMA)):
             return "mr-IN"
         return "hi-IN"
     low = f" {text.lower()} "
