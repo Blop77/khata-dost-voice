@@ -1,0 +1,14 @@
+.env
+.git
+.venv
+data
+research_notes
+reports
+tests
+__pycache__
+*.pyc
+*.lnk
+*.txt
+!requirements.txt
+.claude
+.vscode

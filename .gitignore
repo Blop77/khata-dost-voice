@@ -5,3 +5,7 @@ __pycache__/
 *.lnk
 .DS_Store
 ._*
+research_notes/
+reports/
+data/
+.pytest_cache/

@@ -1,0 +1,23 @@
+# One command: docker compose up --build   then open http://localhost:8000
+# Works with NO keys (typed or browser-voice input, rule-based understanding).
+# Optional keys are read from your shell or a .env file next to this file; nothing is required.
+services:
+  khata-dost:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      SHOP_NAME: ${SHOP_NAME:-Sharma Store}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SARVAM_API_KEY: ${SARVAM_API_KEY:-}
+      SARVAM_STT_MODEL: ${SARVAM_STT_MODEL:-saaras:v4}
+      SARVAM_TTS_MODEL: ${SARVAM_TTS_MODEL:-bulbul:v3}
+    volumes:
+      - khata-data:/data
+    restart: unless-stopped
+
+volumes:
+  khata-data:

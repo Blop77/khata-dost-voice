@@ -1,0 +1,41 @@
+name: check
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pytest
+      - run: pytest -q
+
+  docker-no-keys:
+    # The judges start the app with `docker compose up` and no secret keys. Prove that works.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose up --build -d
+      - name: Main screen loads
+        run: |
+          for i in $(seq 1 30); do curl -fsS http://localhost:8000/ >/dev/null && break; sleep 2; done
+          curl -fsS http://localhost:8000/ | grep -q "Khata Dost"
+      - name: Keyless mode is reported, demo khata is seeded
+        run: |
+          curl -fsS http://localhost:8000/api/config | tee config.json
+          grep -q '"speech":false' config.json
+          curl -fsS http://localhost:8000/api/khata/ledger | grep -q "Ramesh"
+      - name: A typed Hindi entry is understood without any key
+        run: |
+          curl -fsS -X POST http://localhost:8000/api/khata/turn \
+            --form-string session=ci --form-string "text=Ramesh ko dhai sau ka udhaar" | tee turn.json
+          grep -q '"amount":250' turn.json
+          grep -q '"awaiting":"confirm"' turn.json
+      - if: always()
+        run: docker compose logs

@@ -119,6 +119,38 @@ async def respond(track: dict, history: list[dict], user_text: str, language_cod
     return json.loads(text)
 
 
+async def extract(system: str, messages: list[dict], schema: dict, name: str = "extract") -> dict | None:
+    """One structured-output call with any system prompt and schema. Returns None if no key or on refusal."""
+    if not llm_enabled():
+        return None
+    if provider() == "openai":
+        kwargs = {}
+        if effort := os.getenv("OPENAI_REASONING_EFFORT"):
+            kwargs["reasoning_effort"] = effort  # reasoning models reject temperature
+        else:
+            kwargs["temperature"] = 0  # same words in, same entry out
+        response = await _get_openai().chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+            messages=[{"role": "system", "content": system}, *messages],
+            response_format={"type": "json_schema", "json_schema": {"name": name, "schema": schema, "strict": True}},
+            **kwargs,
+        )
+        message = response.choices[0].message
+        return None if message.refusal else json.loads(message.content)
+    response = await _get_client().beta.messages.create(
+        model=os.getenv("CLAUDE_MODEL", "claude-opus-5-5"),
+        max_tokens=2000,
+        betas=["server-side-fallback-2026-07-01"],
+        fallbacks="default",
+        system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+        output_config={"effort": os.getenv("CLAUDE_EFFORT", "low"), "format": {"type": "json_schema", "schema": schema}},
+        messages=messages,
+    )
+    if response.stop_reason == "refusal":
+        return None
+    return json.loads(next(b.text for b in response.content if b.type == "text"))
+
+
 async def _respond_openai(track: dict, messages: list[dict]) -> dict:
     kwargs = {}
     # Only reasoning models accept reasoning_effort; leave OPENAI_REASONING_EFFORT blank for others.

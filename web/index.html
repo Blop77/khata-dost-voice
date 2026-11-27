@@ -1,68 +1,130 @@
 <!doctype html>
-<html lang="en">
+<html lang="hi">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Voice Starter</title>
-  <style>
-    :root { --bg:#faf8f5; --card:#fff; --ink:#1d1b18; --muted:#6b665e; --accent:#e4572e; --line:#e7e2da; --user:#f1ede6; }
-    @media (prefers-color-scheme: dark) { :root { --bg:#151412; --card:#1e1c19; --ink:#f2efe9; --muted:#a39e95; --line:#34302b; --user:#2a2723; } }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, "Noto Sans", sans-serif; background:var(--bg); color:var(--ink); }
-    main { max-width: 960px; margin: 0 auto; padding: 16px; display:grid; gap:16px; grid-template-columns: 1fr; }
-    @media (min-width: 800px) { main { grid-template-columns: 3fr 2fr; } header { grid-column: 1 / -1; } }
-    header { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
-    h1 { font-size:20px; margin:0; }
-    select, input, button { font:inherit; color:inherit; }
-    select, input { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
-    .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; }
-    #log { display:flex; flex-direction:column; gap:10px; min-height:280px; max-height:55vh; overflow-y:auto; }
-    .msg { padding:10px 14px; border-radius:14px; max-width:85%; line-height:1.45; }
-    .msg.user { align-self:flex-end; background:var(--user); }
-    .msg.bot { align-self:flex-start; border:1px solid var(--line); }
-    .msg small { display:block; color:var(--muted); font-size:12px; margin-top:4px; }
-    #mic { width:96px; height:96px; border-radius:50%; border:none; background:var(--accent); color:#fff; font-size:15px; font-weight:600; cursor:pointer; display:block; margin:16px auto 8px; }
-    #mic.rec { animation: pulse 1s infinite; }
-    #mic:disabled { opacity:.5; cursor:wait; }
-    @keyframes pulse { 50% { box-shadow: 0 0 0 14px rgba(228,87,46,.25); } }
-    #status { text-align:center; color:var(--muted); font-size:14px; min-height:20px; }
-    form { display:flex; gap:8px; margin-top:12px; }
-    form input { flex:1; min-width:0; }
-    form button, #reset { border:1px solid var(--line); background:var(--card); border-radius:10px; padding:10px 14px; cursor:pointer; }
-    dl { margin:0; display:grid; grid-template-columns:auto 1fr; gap:8px 12px; font-size:14px; }
-    dt { color:var(--muted); }
-    dd { margin:0; word-break:break-word; }
-    .done { color:#2e7d32; font-weight:600; margin-top:12px; }
-    .badge { font-size:12px; color:var(--muted); }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14532d">
+  <title>Khata Dost · बोलो, खाता लिखो</title>
+  <link rel="stylesheet" href="khata.css">
 </head>
 <body>
-<main>
-  <header>
-    <h1>Voice Starter</h1>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <select id="track" aria-label="Track"></select>
-      <button id="reset">New conversation</button>
-    </div>
-    <div class="badge" id="modes"></div>
-  </header>
+<header class="top">
+  <div>
+    <h1>खाता दोस्त <span>Khata Dost</span></h1>
+    <p id="shop" class="muted"></p>
+  </div>
+  <div class="total">
+    <span class="muted">कुल बाकी</span>
+    <strong id="totalDue">—</strong>
+  </div>
+</header>
 
-  <section class="card">
-    <div id="log" aria-live="polite"></div>
-    <button id="mic" aria-label="Tap to talk">Tap to talk</button>
-    <div id="status"></div>
-    <form id="typed">
-      <input id="text" placeholder="…or type (useful for testing)" autocomplete="off">
-      <button>Send</button>
+<div id="modes" class="modes" role="status"></div>
+
+<main>
+  <section class="talk card" aria-label="Talk">
+    <div id="bubble" class="bubble" aria-live="polite">
+      <p id="botSays">नमस्ते! बोलिए, किस ग्राहक का हिसाब लिखना है?</p>
+      <p id="heard" class="heard"></p>
+    </div>
+
+    <article id="draft" class="draft" hidden>
+      <div class="draft-top">
+        <span id="draftName" class="draft-name"></span>
+        <span id="draftType" class="badge"></span>
+      </div>
+      <div id="draftAmount" class="draft-amount"></div>
+      <div id="draftMeta" class="muted"></div>
+      <div id="draftChecks" class="checks"></div>
+      <div class="draft-actions">
+        <button id="yesBtn" class="yes">✓ हाँ, लिखो</button>
+        <button id="noBtn" class="no">✗ नहीं</button>
+      </div>
+    </article>
+
+    <article id="optionsBox" class="options" hidden></article>
+
+    <button id="mic" class="mic" aria-label="बोलने के लिए दबाएँ">
+      <span class="mic-icon" aria-hidden="true">🎙</span>
+      <span id="micLabel">बोलिए</span>
+    </button>
+    <div id="status" class="status" aria-live="polite"></div>
+
+    <label class="handsfree"><input type="checkbox" id="handsfree" checked> हाथ खाली नहीं? "हाँ" अपने-आप सुनूँगा (hands-free confirm)</label>
+
+    <form id="typed" class="typed">
+      <input id="text" placeholder="या लिखें: Ramesh ko 250 udhaar" autocomplete="off" aria-label="Type instead">
+      <button>भेजें</button>
     </form>
+
+    <div class="try muted">
+      <strong>बोलकर देखिए:</strong>
+      <button class="chip">रमेश को ढाई सौ का उधार, आटा 5 किलो, सोमवार तक</button>
+      <button class="chip">Sunita ne 400 jama kiya</button>
+      <button class="chip">किस किस का पैसा बाकी है?</button>
+      <button class="chip">Mohan ko 2 packet chicks, 40 rupaye udhaar</button>
+      <button class="chip">पिछली entry हटाओ</button>
+      <button class="chip">aaj kisko yaad dilana hai</button>
+    </div>
+
+    <article id="receipt" class="receipt" hidden>
+      <h3>ग्राहक की रसीद · Customer's voice receipt</h3>
+      <p id="receiptText"></p>
+      <div class="row">
+        <button id="receiptPlay">▶ सुनें</button>
+        <a id="receiptWa" target="_blank" rel="noopener">WhatsApp पर भेजें</a>
+      </div>
+      <p class="muted small">ग्राहक को उसकी भाषा में पक्की रसीद, ताकि बाद में झगड़ा न हो।</p>
+    </article>
   </section>
 
-  <aside class="card">
-    <h2 style="font-size:16px;margin:0 0 12px">Captured so far</h2>
-    <dl id="fields"></dl>
-    <div id="done"></div>
-  </aside>
+  <section class="side">
+    <article class="card">
+      <div class="row between">
+        <h2>आज की याद · Due today</h2>
+        <span id="windowNote" class="muted small"></span>
+      </div>
+      <ul id="reminders" class="list"></ul>
+    </article>
+
+    <article class="card">
+      <h2>खाता · Customers</h2>
+      <ul id="customers" class="list"></ul>
+    </article>
+
+    <article id="detail" class="card" hidden>
+      <div class="row between">
+        <h2 id="detailName"></h2>
+        <button id="detailClose" class="link">बंद करें</button>
+      </div>
+      <p id="detailBalance" class="big"></p>
+      <form id="detailForm" class="detail-form">
+        <label>फ़ोन <input id="detailPhone" inputmode="tel" placeholder="98xxxxxxxx"></label>
+        <label>भाषा
+          <select id="detailLang">
+            <option value="hi-IN">हिन्दी</option><option value="mr-IN">मराठी</option><option value="en-IN">English</option>
+          </select>
+        </label>
+        <label class="consent"><input type="checkbox" id="detailConsent"> ग्राहक ने WhatsApp याद दिलाने के लिए "हाँ" कहा</label>
+        <p id="detailConsentAt" class="muted small"></p>
+        <button>सेव करें</button>
+      </form>
+      <ul id="detailEntries" class="list"></ul>
+    </article>
+
+    <article class="card small muted">
+      <h2>भरोसा · Why you can trust it</h2>
+      <ul class="plain">
+        <li>बिना आपके "हाँ" के कुछ भी सेव नहीं होता।</li>
+        <li>बोली गई रकम डेटाबेस से आती है, AI से नहीं।</li>
+        <li>दो अलग पढ़ने वाले (नियम + AI) रकम मिलाते हैं; अलग हों तो पूछता है।</li>
+        <li>याद सिर्फ़ उन्हें, जिन्होंने हाँ कहा; सुबह 8 से शाम 7 बजे तक।</li>
+      </ul>
+      <button id="resetDemo" class="link">डेमो फिर से शुरू करें (reset demo data)</button>
+    </article>
+  </section>
 </main>
-<script src="app.js"></script>
+
+<script src="khata.js"></script>
 </body>
 </html>
