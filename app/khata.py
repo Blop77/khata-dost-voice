@@ -195,6 +195,14 @@ async def understand(sess: dict, text: str) -> tuple[dict, dict | None]:
     return rules, ai
 
 
+def clean_name(name: str | None) -> str | None:
+    """Drop honorifics the model sometimes keeps: "Ramesh bhai" -> "Ramesh", "Sunita ji" -> "Sunita"."""
+    if not name:
+        return name
+    words = [w for w in name.split() if w.lower().strip(".,") not in parser.HONORIFIC]
+    return " ".join(words) or name
+
+
 def merge(rules: dict, ai: dict | None) -> dict:
     if not ai:
         return {**rules, "source": "rules"}
@@ -209,6 +217,9 @@ def merge(rules: dict, ai: dict | None) -> dict:
         out["intent"] = "multiple"
     for k in ("customer_name", "entry_type", "items", "due_date"):
         out[k] = ai.get(k) or rules.get(k)
+    out["customer_name"] = clean_name(out["customer_name"])
+    if ai["intent"] == "cancel" and rules["intent"] == "correct":
+        out["intent"] = "correct"  # "nahi nahi, Ganesh" changes the name; it doesn't cancel
     a, r = ai.get("amount_rupees"), rules.get("amount_rupees")
     out["amount_rupees"] = a if a else r
     if a and r and a != r:
@@ -378,6 +389,12 @@ async def handle(sid: str, text: str, language_code: str | None = None) -> dict:
             sess["draft"]["name"] = None
             sess["awaiting"] = "name"
             return {**_reply(sess, say("ask_name", lang)), **meta}
+        if u.get("customer_name") and not _same_person(u["customer_name"], sess["draft"]["name"]):
+            # "nahi nahi, Ganesh": same entry, different person
+            sess["draft"].update(name=u["customer_name"], customer_id=None, new_customer=False)
+            _apply(sess["draft"], {k: v for k, v in u.items() if k != "customer_name"})
+            sess["awaiting"] = None
+            return {**_next_question(sess), **meta}
         if any(u.get(k) for k in ("amount_rupees", "entry_type", "items", "due_date")) and not u.get("customer_name"):
             _apply(sess["draft"], u)  # keep the extra detail, but still need a yes on the new name
             return {**_reply(sess, say("confirm_new", lang, name=sess["draft"]["name"])), **meta}

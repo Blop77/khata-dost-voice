@@ -205,3 +205,15 @@ def test_counter_phrasings(text, name, etype, amount):
 def test_due_date_phrases():
     assert parser.parse_due("das din mein dega", FRI) == "2026-12-07"
     assert parser.parse_due("Sunday tak, Monday nahi", FRI) == "2026-11-29"
+
+
+def test_switch_name_while_confirming_new_customer():
+    say("Ramesh bhaiya ko 300 ka udhaar")  # bhaiya is dropped -> existing Ramesh, no new-customer question
+    say("Vikram ko 300 ka udhaar")
+    r = say("nahi nahi, Ganesh")
+    assert r["draft"]["name"] == "Ganesh" and r["draft"]["amount"] == 300 and r["awaiting"] == "confirm"
+
+
+def test_clean_name():
+    from app.khata import clean_name
+    assert clean_name("Ramesh bhai") == "Ramesh" and clean_name("Sunita ji") == "Sunita"
