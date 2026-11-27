@@ -12,11 +12,11 @@
     intro() {
       if (!g) return;
       const tl = g.timeline({ defaults: { ease: "power3.out" } });
-      tl.from(".seal", { scale: 0.4, rotate: -90, opacity: 0, duration: 0.7, ease: "back.out(1.6)" })
+      tl.from(".seal", { y: 6, opacity: 0, duration: 0.5 })
         .from(".top h1, .tagline, .shop", { y: 14, opacity: 0, duration: 0.6, stagger: 0.08 }, "-=0.45")
         .from(".total", { y: 14, opacity: 0, duration: 0.6 }, "-=0.5")
         .from(".talk", { y: 30, opacity: 0, duration: 0.8 }, "-=0.35")
-        .from(".mic-wrap", { scale: 0.85, opacity: 0, duration: 0.7, ease: "back.out(1.7)" }, "-=0.45")
+        .from(".mic-wrap", { scale: 0.92, opacity: 0, duration: 0.6 }, "-=0.45")
         .from(".side > .card", { y: 30, opacity: 0, duration: 0.7, stagger: 0.1 }, "-=0.55");
     },
 
