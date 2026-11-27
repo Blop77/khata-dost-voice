@@ -48,6 +48,8 @@ Without Docker: `pip install -r requirements.txt && uvicorn app.main:app --port 
 | पिछली entry हटाओ → हाँ | Asks first, then removes the last entry (kept for audit) |
 | रमेशला अडीचशे उधार | Marathi: "Ramesh, उधार 250 रुपये. लिहू का?" |
 
+**हिन्दी / EN switch** (top right) changes all screen text and the starting reply language. The app still answers in whatever language you speak, and English works without keys too ("Sunita paid 400", "Who owes me money?").
+
 **Hands-free confirm** is on by default. After the read-back, the app listens for "haan" on its own, so an entry takes one tap.
 
 ## Why you can trust the numbers
@@ -76,7 +78,7 @@ A ledger is money, so the design is built around not getting amounts wrong:
 |---|---|
 | Voice entry, read-back, spoken yes, corrections, undo, balances, dues, reminders (Hindi, Hinglish, Marathi, English) | Sending through the WhatsApp Business API. The prototype opens a WhatsApp share link and offers the voice note as an MP3 |
 | Customer receipts in the customer's language, consent log, 8 am–7 pm rule | Reply templates for languages beyond Hindi, Marathi and English |
-| Keyless mode, one-command Docker start, 53 automated tests, CI | Login, multiple shops or staff, offline queue, backups |
+| Keyless mode, one-command Docker start, 62 automated tests, CI | Login, multiple shops or staff, offline queue, backups |
 
 Demo customers are synthetic. The ledger is a single-shop SQLite file (`/data/khata.db` in Docker).
 

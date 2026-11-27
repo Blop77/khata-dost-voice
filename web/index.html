@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;600;700;800&family=Fraunces:ital,wght@1,500&display=swap">
-  <link rel="stylesheet" href="khata.css">
+  <link rel="stylesheet" href="khata.css?v=4">
 </head>
 <body>
 <header class="top">
@@ -16,14 +16,20 @@
     <div class="brand">
       <div class="seal" aria-hidden="true">₹</div>
       <div>
-        <h1>खाता दोस्त <span>Khata Dost</span></h1>
+        <h1><span data-i18n="title" class="t">खाता दोस्त</span> <span data-i18n="sub">Khata Dost</span></h1>
         <p class="tagline">Bolo, khata likho.</p>
         <p id="shop" class="shop"></p>
       </div>
     </div>
+    <div class="top-right">
+      <div class="lang-switch" role="group" aria-label="Language">
+        <button type="button" data-lang="hi" aria-pressed="true">हिन्दी</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
     <div class="total">
-      <span class="lbl">कुल बाकी</span>
+      <span class="lbl" data-i18n="totalDue">कुल बाकी</span>
       <strong id="totalDue">—</strong>
+    </div>
     </div>
   </div>
 </header>
@@ -32,9 +38,9 @@
 
 <main>
   <section class="talk card" aria-label="Talk">
-    <span class="tag">01 / बोलिए · Speak</span>
+    <span class="tag" data-i18n="tagSpeak">01 / बोलिए · Speak</span>
     <div id="bubble" class="bubble" aria-live="polite">
-      <p id="botSays">नमस्ते! बोलिए, किस ग्राहक का हिसाब लिखना है?</p>
+      <p id="botSays" data-i18n="greeting">नमस्ते! बोलिए, किस ग्राहक का हिसाब लिखना है?</p>
       <p id="heard" class="heard"></p>
     </div>
 
@@ -47,10 +53,10 @@
       <div id="draftMeta" class="muted"></div>
       <div id="draftChecks" class="checks"></div>
       <div class="draft-actions">
-        <button id="yesBtn" class="yes">✓ हाँ, लिखो</button>
-        <button id="noBtn" class="no">✗ नहीं</button>
+        <button id="yesBtn" class="yes" data-i18n="yes">✓ हाँ, लिखो</button>
+        <button id="noBtn" class="no" data-i18n="no">✗ नहीं</button>
       </div>
-      <div id="stamp" class="stamp" aria-hidden="true">लिख दिया ✓</div>
+      <div id="stamp" class="stamp" aria-hidden="true" data-i18n="stamp">लिख दिया ✓</div>
     </article>
 
     <article id="optionsBox" class="options" hidden></article>
@@ -58,24 +64,24 @@
     <div id="micWrap" class="mic-wrap idle-hint">
       <span class="ring r2" aria-hidden="true"></span>
       <span class="ring r1" aria-hidden="true"></span>
-      <button id="mic" class="mic" aria-label="बोलने के लिए दबाएँ">
+      <button id="mic" class="mic" aria-label="बोलने के लिए दबाएँ" data-i18n-aria="micAria">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3.5"/>
         </svg>
-        <span id="micLabel">बोलिए</span>
+        <span id="micLabel" data-i18n="mic">बोलिए</span>
       </button>
     </div>
     <div id="status" class="status" aria-live="polite"></div>
 
-    <label class="handsfree"><input type="checkbox" id="handsfree" checked> हाथ खाली नहीं? "हाँ" अपने-आप सुनूँगा</label>
+    <label class="handsfree"><input type="checkbox" id="handsfree" checked> <span data-i18n="handsfree">हाथ खाली नहीं? "हाँ" अपने-आप सुनूँगा</span></label>
 
     <form id="typed" class="typed">
-      <input id="text" placeholder="या लिखें: Ramesh ko 250 udhaar" autocomplete="off" aria-label="Type instead">
-      <button>भेजें</button>
+      <input id="text" placeholder="या लिखें: Ramesh ko 250 udhaar" data-i18n-ph="typePh" autocomplete="off" aria-label="Type instead">
+      <button data-i18n="send">भेजें</button>
     </form>
 
     <div class="try muted">
-      <strong>बोलकर देखिए:</strong>
+      <strong data-i18n="tryLabel">बोलकर देखिए:</strong>
       <button class="chip">रमेश को ढाई सौ का उधार, आटा 5 किलो, सोमवार तक</button>
       <button class="chip">Sunita ne 400 jama kiya</button>
       <button class="chip">किस किस का पैसा बाकी है?</button>
@@ -85,66 +91,67 @@
     </div>
 
     <article id="receipt" class="receipt" hidden>
-      <span class="tag">ग्राहक की रसीद · Customer receipt</span>
+      <span class="tag" data-i18n="receiptTag">ग्राहक की रसीद · Customer receipt</span>
       <p id="receiptText"></p>
       <div class="row">
-        <button id="receiptPlay">▶ सुनें</button>
+        <button id="receiptPlay" data-i18n="play">▶ सुनें</button>
         <a id="receiptWa" target="_blank" rel="noopener">WhatsApp पर भेजें</a>
       </div>
-      <p class="muted small">ग्राहक को उसकी भाषा में रसीद, ताकि बाद में झगड़ा न हो।</p>
+      <p class="muted small" data-i18n="receiptNote">ग्राहक को उसकी भाषा में रसीद, ताकि बाद में झगड़ा न हो।</p>
     </article>
   </section>
 
   <section class="side">
     <article class="card">
       <div class="row between">
-        <span class="tag">02 / आज की याद · Due today</span>
+        <span class="tag" data-i18n="tagDue">02 / आज की याद · Due today</span>
         <span id="windowNote" class="muted small"></span>
       </div>
       <ul id="reminders" class="list"></ul>
     </article>
 
     <article class="card">
-      <span class="tag">03 / खाता · Customers</span>
+      <span class="tag" data-i18n="tagCust">03 / खाता · Customers</span>
       <ul id="customers" class="list"></ul>
     </article>
 
     <article id="detail" class="card" hidden>
       <div class="row between">
         <h2 id="detailName"></h2>
-        <button id="detailClose" class="link">बंद करें</button>
+        <button id="detailClose" class="link" data-i18n="close">बंद करें</button>
       </div>
       <p id="detailBalance" class="big"></p>
       <form id="detailForm" class="detail-form">
-        <label>फ़ोन <input id="detailPhone" inputmode="tel" placeholder="98xxxxxxxx"></label>
-        <label>भाषा
+        <label><span data-i18n="phone">फ़ोन</span> <input id="detailPhone" inputmode="tel" placeholder="98xxxxxxxx"></label>
+        <label><span data-i18n="lang">भाषा</span>
           <select id="detailLang">
             <option value="hi-IN">हिन्दी</option><option value="mr-IN">मराठी</option><option value="en-IN">English</option>
           </select>
         </label>
-        <label class="consent"><input type="checkbox" id="detailConsent"> ग्राहक ने WhatsApp याद दिलाने के लिए "हाँ" कहा</label>
+        <label class="consent"><input type="checkbox" id="detailConsent"> <span data-i18n="consent">ग्राहक ने WhatsApp याद दिलाने के लिए "हाँ" कहा</span></label>
         <p id="detailConsentAt" class="muted small"></p>
-        <button>सेव करें</button>
+        <button data-i18n="save">सेव करें</button>
       </form>
       <ul id="detailEntries" class="list"></ul>
     </article>
 
     <article class="card trust">
-      <span class="tag">04 / भरोसा · Why you can trust it</span>
+      <span class="tag" data-i18n="tagTrust">04 / भरोसा · Why you can trust it</span>
       <ul>
-        <li>बिना आपके "हाँ" के कुछ भी सेव नहीं होता।</li>
-        <li>बोली गई रकम डेटाबेस से आती है, AI से नहीं।</li>
-        <li>AI key हो तो नियम + AI दोनों रकम मिलाते हैं; अलग हों तो पूछता है।</li>
-        <li>याद सिर्फ़ उन्हें, जिन्होंने हाँ कहा; सुबह 8 से शाम 7 बजे तक।</li>
+        <li data-i18n="trust1">बिना आपके "हाँ" के कुछ भी सेव नहीं होता।</li>
+        <li data-i18n="trust2">बोली गई रकम डेटाबेस से आती है, AI से नहीं।</li>
+        <li data-i18n="trust3">AI key हो तो नियम + AI दोनों रकम मिलाते हैं; अलग हों तो पूछता है।</li>
+        <li data-i18n="trust4">याद सिर्फ़ उन्हें, जिन्होंने हाँ कहा; सुबह 8 से शाम 7 बजे तक।</li>
       </ul>
-      <button id="resetDemo" class="link">डेमो फिर से शुरू करें (reset demo data)</button>
+      <button id="resetDemo" class="link" data-i18n="reset">डेमो फिर से शुरू करें (reset demo data)</button>
     </article>
   </section>
 </main>
 
 <!-- Motion only. If these fail to load (offline), the app works the same without animation. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-<script src="motion.js" defer></script>
-<script src="khata.js" defer></script>
+<script src="i18n.js?v=4" defer></script>
+<script src="motion.js?v=4" defer></script>
+<script src="khata.js?v=4" defer></script>
 </body>
 </html>

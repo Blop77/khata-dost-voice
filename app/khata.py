@@ -21,7 +21,14 @@ SESSIONS: dict[str, dict] = {}
 
 
 def session(sid: str) -> dict:
-    return SESSIONS.setdefault(sid, {"draft": None, "awaiting": None, "options": [], "lang": "hi-IN"})
+    return SESSIONS.setdefault(sid, {"draft": None, "awaiting": None, "options": [], "lang": "hi-IN", "turns": 0})
+
+
+def prefer_language(sid: str, ui_lang: str | None) -> None:
+    """A fresh conversation starts in the screen's language (the Hindi/English switch)."""
+    sess = session(sid)
+    if ui_lang in TEMPLATE_LANGS and not sess.get("turns"):
+        sess["lang"] = ui_lang
 
 
 # --- what we say ------------------------------------------------------------------------
@@ -344,6 +351,7 @@ async def handle(sid: str, text: str, language_code: str | None = None) -> dict:
     if not text:
         return _reply(sess, say("not_heard", sess["lang"]))
 
+    sess["turns"] = sess.get("turns", 0) + 1
     rules, ai = await understand(sess, text)
     u = merge(rules, ai)
     # Short replies ("haan", "nahi, 400", "doodhwala") say little about language: keep the conversation's.

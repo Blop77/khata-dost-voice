@@ -217,3 +217,27 @@ def test_switch_name_while_confirming_new_customer():
 def test_clean_name():
     from app.khata import clean_name
     assert clean_name("Ramesh bhai") == "Ramesh" and clean_name("Sunita ji") == "Sunita"
+
+
+# --- English screen language ---------------------------------------------------------------
+
+def test_english_mode_conversation():
+    khata.prefer_language("en", "en-IN")
+    r = say("Ramesh, 250 rupees credit, atta 5 kilo, pay by Monday", sid="en")
+    assert r["lang"] == "en-IN" and r["draft"]["amount"] == 250 and "Shall I save it" in r["reply"]
+    assert say("yes", sid="en")["saved"]["balance"] == 750
+
+
+@pytest.mark.parametrize("text,intent,name", [("Who owes me money?", "dues_query", None),
+                                              ("Who should I remind today?", "reminders", None),
+                                              ("How much does Ramesh owe?", "customer_query", "Ramesh"),
+                                              ("Give Priya 120 rupees credit", "entry", "Priya"),
+                                              ("Sunita paid 400", "entry", "Sunita")])
+def test_english_phrases(text, intent, name):
+    r = parser.understand(text)
+    assert r["intent"] == intent and r["customer_name"] == name
+
+
+def test_screen_language_only_sets_the_start():
+    khata.prefer_language("mix", "en-IN")
+    assert say("रमेश को ढाई सौ का उधार", sid="mix")["lang"] == "hi-IN"  # speaking Hindi still gets Hindi

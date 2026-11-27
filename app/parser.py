@@ -181,10 +181,10 @@ NO = ["nahi", "nahin", "नहीं", "नही", "na", "ना", "no", "galat
 DUES = ["kis kis", "किस किस", "किस-किस", "kiska kiska", "sabka hisaab", "सबका हिसाब", "kaun kaun", "कौन कौन",
         "list", "लिस्ट", "baaki hai", "बाकी है", "बाकी हैं", "who owes", "dues", "kitne log"]
 CUSTOMER_QUERY = ["ka hisaab", "का हिसाब", "kitna baaki", "कितना बाकी", "kitne baaki", "कितने बाकी", "ka khata",
-                  "का खाता", "chi baki", "ची बाकी", "balance"]
+                  "का खाता", "chi baki", "ची बाकी", "balance", "how much does", "owe me", "account of"]
 UNDO = ["undo", "pichli entry", "पिछली entry", "पिछली एंट्री", "last entry", "galat entry", "गलत एंट्री", "hatao",
         "हटाओ", "mita do", "मिटा दो", "delete"]
-REMIND = ["yaad dila", "याद दिला", "reminder", "रिमाइंडर", "message bhej", "मैसेज भेज", "sabko bhej", "सबको भेज"]
+REMIND = ["yaad dila", "याद दिला", "reminder", "रिमाइंडर", "message bhej", "मैसेज भेज", "sabko bhej", "सबको भेज", "remind"]
 
 
 YES_WORDS = {"haan", "han", "ha", "haa", "haanji", "हाँ", "हां", "हा", "ok", "okay", "ओके", "theek", "thik", "ठीक", "hai", "है",
@@ -219,13 +219,20 @@ STOP = set(UNITS) | set(SCALES) | set(FRACTIONS) | set(MODIFIERS) | QTY_UNITS | 
 NAME_AFTER = {"ko", "को", "ne", "ने", "ka", "का", "ki", "की", "ke", "के", "la", "ला", "ni", "नी", "chi", "ची", "से", "se"}
 
 
+# English words that are never customer names ("Give Priya 120", "How much does Ramesh owe?")
+EN_STOP = {"give", "gave", "add", "write", "put", "please", "how", "much", "does", "do", "did", "who", "what", "whose", "is",
+           "are", "the", "a", "an", "to", "for", "of", "me", "my", "i", "should", "today", "delete", "remove", "last",
+           "entry", "owe", "owes", "money", "rupees", "rupee", "credit", "paid", "pay", "by", "due", "remind", "show",
+           "tell", "account", "balance", "yes", "no", "okay", "new", "customer", "and", "with", "on", "has", "have", "from"}
+
 HONORIFIC = {"bhai", "भाई", "bhaiya", "भैया", "ji", "जी", "didi", "दीदी", "seth", "सेठ", "sahab", "साहब", "saab", "aunty",
              "आंटी", "uncle", "अंकल", "chacha", "चाचा", "kaka", "काका", "tai", "ताई", "mausi", "मौसी", "bhabhi", "भाभी",
              "dada", "दादा", "anna", "अण्णा", "madam", "मैडम"}
 
 
 def _is_word(tok: str) -> bool:
-    return tok not in STOP and tok not in HONORIFIC and not re.fullmatch(r"[\d.]+", tok) and len(tok) > 1
+    return (tok not in STOP and tok not in HONORIFIC and tok not in EN_STOP and not re.fullmatch(r"[\d.]+", tok)
+            and len(tok) > 1)
 
 
 def parse_name(text: str, has_draft: bool = False) -> str | None:
@@ -252,8 +259,8 @@ def parse_name(text: str, has_draft: bool = False) -> str | None:
         if m and tok not in STOP:
             return (m.group(1) or raw[i][:-2]).strip()
     # A bare name: "Ramesh 200 udhaar", or a correction "nahi nahi, Suresh"
-    content = [(raw[i], t) for i, t in enumerate(toks) if t not in NO and t not in HONORIFIC]
-    if content and (money_talk or (has_draft and _has(text, NO))):
+    content = [(raw[i], t) for i, t in enumerate(toks) if t not in NO and t not in HONORIFIC and t not in EN_STOP]
+    if content and (money_talk or (has_draft and _has(text, NO)) or _has(text, CUSTOMER_QUERY)):
         word, tok = content[0]
         if _is_word(tok) and not match_item(tok) and (word[:1].isupper() or re.match(r"[ऀ-ॿ]", word)
                                                        or (has_draft and len(content) == 1)):

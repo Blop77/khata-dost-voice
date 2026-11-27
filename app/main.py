@@ -21,6 +21,15 @@ WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 app = FastAPI(title="Khata Dost")
 
 
+@app.middleware("http")
+async def _revalidate_static(request: Request, call_next):
+    # Browsers must re-check the UI files on each load, so nobody runs a stale mix of old and new scripts.
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.on_event("startup")
 def _seed_if_empty():
     # A fresh install (e.g. `docker compose up`) opens on a small demo khata instead of an empty screen.
@@ -101,8 +110,11 @@ async def khata_turn(
     session: str = Form(...),
     text: str | None = Form(None),
     audio: UploadFile | None = File(None),
+    ui_lang: str | None = Form(None),
 ):
-    """One spoken (or typed) turn of the ledger conversation."""
+    """One spoken (or typed) turn of the ledger conversation. ui_lang (hi-IN / en-IN) is the screen language,
+    used as the starting reply language until the owner's own speech says otherwise."""
+    khata.prefer_language(session, ui_lang)
     _limit(request, "turn", 30)
     if text and len(text) > 500:
         raise HTTPException(413, "too long - say one entry at a time")
