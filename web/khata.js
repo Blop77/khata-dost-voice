@@ -165,7 +165,8 @@ async function sendTurn(form) {
     });
     if (data.saved || data.undone) refreshLedger(data.saved && data.saved.customer && data.saved.customer.id);
   } catch (e) {
-    setStatus(e.message);
+    // A dropped connection (server stopped, tunnel restarted) shows as a TypeError from fetch.
+    setStatus(e instanceof TypeError ? t("offline") : e.message);
   } finally {
     state.busy = false;
     $("mic").classList.remove("busy");
