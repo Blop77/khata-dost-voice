@@ -11,7 +11,7 @@ let SESSION_ID = SESSION;
 const Motion = window.Motion || { on: false, intro() {}, say: (el, t) => (el.textContent = t), draft: (c, a, v) => (a.textContent = v ? "₹" + v : "₹ ?"),
   saved: (c, s, done) => done && done(), number: (el, v, p = "") => (el.textContent = p + "₹" + Number(v).toLocaleString("en-IN")), list() {}, pop() {} };
 let listsShown = false;
-const AVATAR = ["#b45309", "#0f766e", "#7c3aed", "#be123c", "#1d4ed8", "#4d7c0f", "#c2410c", "#0e7490"];
+const AVATAR = ["#7c3aed", "#4f46e5", "#0891b2", "#0d9488", "#9333ea", "#2563eb", "#c026d3", "#0e7490"];
 const avatarColor = (name) => AVATAR[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR.length];
 function setLevel(v) { $("micWrap").style.setProperty("--level", Math.max(0, Math.min(1, v)).toFixed(3)); }
 

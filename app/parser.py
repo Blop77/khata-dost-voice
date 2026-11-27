@@ -57,7 +57,7 @@ QTY_UNITS = {"kg", "kilo", "kilos", "किलो", "g", "gm", "gram", "ग्�
 MONEY_MARKERS = {"rupaye", "rupees", "rupee", "rupay", "rs", "रुपये", "रुपए", "रूपये", "ka", "ki", "ke", "का", "की",
                  "के", "udhaar", "udhar", "उधार", "jama", "जमा", "रुपयांचे", "रुपये", "चे"}
 
-TOKEN = re.compile(r"₹?\s?\d[\d,]*(?:\.\d+)?|[\wऀ-ॿ]+", re.UNICODE)
+TOKEN = re.compile(r"₹?\s?\d[\d,]*(?:\.\d+)?|(?:(?![।॥])[\wऀ-ॿ])+", re.UNICODE)  # "हाँ।" -> "हाँ"
 
 
 def tokens(text: str) -> list[str]:
@@ -290,7 +290,12 @@ def parse_name(text: str, has_draft: bool = False) -> str | None:
     for i, tok in enumerate(toks[:3]):
         if re.search(r"(wala|vala|वाला|वाले|wali|वाली)$", tok) or not money_talk:
             continue  # "doodhwala" is a nickname, not Marathi "Ramesh-la"
-        m = re.fullmatch(r"([ऀ-ॿ]{2,})(?:ला|ने|नी)|([a-z]{3,})la", tok)
+        # "-ला" anywhere near the start; "-ने"/"-नी" only as the first word, and never Hindi words like महीने, अपने, देने
+        hindi_ne = {"महीने", "अपने", "सामने", "पहले", "कहने", "देने", "लेने", "होने", "करने", "रहने", "जाने", "आने",
+                    "मैंने", "उसने", "किसने", "जिसने", "इसने", "हमने", "तुमने", "आपने", "उन्होंने", "पैसे", "पुराने"}
+        m = re.fullmatch(r"([ऀ-ॿ]{2,})ला|([a-z]{3,})la", tok)
+        if not m and i == 0 and tok not in hindi_ne:
+            m = re.fullmatch(r"([ऀ-ॿ]{2,})(?:ने|नी)()", tok)
         if m and tok not in STOP:
             return (m.group(1) or raw[i][:-2]).strip()
     # A bare name: "Ramesh 200 udhaar", or a correction "nahi nahi, Suresh"

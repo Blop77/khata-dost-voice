@@ -79,7 +79,7 @@ A ledger is money, so the design is built around not getting amounts wrong:
 |---|---|
 | Voice entry, read-back, spoken yes, corrections, undo, balances, dues, reminders (Hindi, Hinglish, Marathi, English) | Sending through the WhatsApp Business API. The prototype opens a WhatsApp share link and offers the voice note as an MP3 |
 | Customer receipts in the customer's language, consent log, 8 am–7 pm rule | Reply templates for languages beyond Hindi, Marathi and English |
-| Keyless mode, one-command Docker start, 74 automated tests, CI | Login, multiple shops or staff, offline queue, backups |
+| Keyless mode, one-command Docker start, 76 automated tests, CI | Login, multiple shops or staff, offline queue, backups |
 
 Demo customers are synthetic. The ledger is a single-shop SQLite file (`/data/khata.db` in Docker).
 

@@ -297,3 +297,15 @@ def test_dues_questions_are_not_summaries():
 @pytest.mark.parametrize("text", ["is mahine kitna jama hua", "aaj kitna paisa mila", "maine kitna udhaar diya"])
 def test_roman_hinglish_is_hindi(text):
     assert parser.script_language(text) == "hi-IN"
+
+
+def test_hindi_full_stop_from_speech_to_text():
+    """Sarvam ends Hindi sentences with '।'. A spoken 'हाँ।' must still confirm (found while rehearsing the video)."""
+    say("रमेश को ढाई सौ का उधार।")
+    assert say("हाँ।").get("saved")
+    say("सुनीता ने तीन सौ जमा किया।")
+    assert say("नहीं, चार सौ।")["draft"]["amount"] == 400
+
+
+def test_hindi_words_ending_in_ne_are_not_marathi_names():
+    assert parser.understand("इस महीने कितना जमा हुआ?")["intent"] == "summary_query"
