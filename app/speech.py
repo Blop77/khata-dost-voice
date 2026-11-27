@@ -25,6 +25,8 @@ async def transcribe(audio: bytes, filename: str, content_type: str) -> dict:
     """Returns {"transcript": str, "language_code": str | None}. Auto-detects the language."""
     if not _key():
         raise RuntimeError("SARVAM_API_KEY not set - type your message instead, or add a key to .env")
+    # Chrome labels recordings "audio/webm;codecs=opus"; Sarvam rejects the ";codecs=" part, so send the bare type.
+    content_type = (content_type or "audio/webm").split(";")[0].strip()
     async with httpx.AsyncClient(timeout=60) as client:
         r = await client.post(
             f"{SARVAM_BASE}/speech-to-text",

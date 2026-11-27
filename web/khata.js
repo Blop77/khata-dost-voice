@@ -152,7 +152,8 @@ async function sendTurn(form) {
   form.append("ui_lang", I.lang === "en" ? "en-IN" : "hi-IN");
   try {
     const res = await fetch("/api/khata/turn", { method: "POST", body: form });
-    const data = await res.json();
+    let data;
+    try { data = await res.json(); } catch (_) { throw new Error(t("offline") + " (" + res.status + ")"); } // e.g. a proxy's HTML error page
     if (!res.ok) throw new Error(data.detail || res.statusText);
     render(data);
     const secs = data.timing_ms ? ` · ${(data.timing_ms.total / 1000).toFixed(1)}s` : "";

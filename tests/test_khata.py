@@ -241,3 +241,26 @@ def test_english_phrases(text, intent, name):
 def test_screen_language_only_sets_the_start():
     khata.prefer_language("mix", "en-IN")
     assert say("रमेश को ढाई सौ का उधार", sid="mix")["lang"] == "hi-IN"  # speaking Hindi still gets Hindi
+
+
+def test_stt_sends_bare_content_type(monkeypatch):
+    """Chrome records 'audio/webm;codecs=opus'; Sarvam rejects the codecs suffix (seen live on 27 Nov)."""
+    from app import speech
+    sent = {}
+
+    class FakeResp:
+        def raise_for_status(self): pass
+        def json(self): return {"transcript": "रमेश को 250 का उधार", "language_code": "hi-IN"}
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): pass
+        async def post(self, url, headers=None, files=None, data=None):
+            sent["type"] = files["file"][2]
+            return FakeResp()
+
+    monkeypatch.setenv("SARVAM_API_KEY", "test")
+    monkeypatch.setattr(speech.httpx, "AsyncClient", FakeClient)
+    asyncio.run(speech.transcribe(b"x" * 2000, "speech.webm", "audio/webm;codecs=opus"))
+    assert sent["type"] == "audio/webm"

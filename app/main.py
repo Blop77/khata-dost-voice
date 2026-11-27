@@ -127,8 +127,11 @@ async def khata_turn(
             stt = await speech.transcribe(data, audio.filename or "audio.webm", audio.content_type or "audio/webm")
         except RuntimeError as e:
             raise HTTPException(400, str(e))
-        except Exception:
-            raise HTTPException(502, "Speech service did not respond. Try again, or type the entry.")
+        except Exception as e:
+            # Never answer 5xx here: Cloudflare replaces those with an HTML page the app can't read.
+            # Tell the owner to say it again (in their language) and keep the real reason in the log.
+            print(f"speech-to-text failed: {type(e).__name__}: {e}", flush=True)
+            return {**khata.session_reply(session, "not_heard"), "transcript": "", "stt_error": True}
         text, language_code = stt["transcript"], stt["language_code"]
     stt_ms = int((time.perf_counter() - t0) * 1000)
     result = await khata.handle(session, text or "", language_code)
